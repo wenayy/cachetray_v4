@@ -6,6 +6,7 @@
   const base = String(window.CACHE_TRAY_TRANSFER_API || '').replace(/\/$/, '');
   let device = JSON.parse(localStorage.getItem(KEY) || 'null');
   let pollTimer = null;
+  let clipTimer = null;
   let previewItem = null;
   let previewRequest = 0;
   let installPrompt = null;
@@ -19,6 +20,40 @@
   const thumbQueue = [];
   let loadingThumbnails = 0;
   let view = localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid';
+  let section = 'images';
+  let clipFilter = 'all';
+  let lastClips = [];
+  const CLIP_ICONS = {
+    text: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    code: '<path d="m8 6-6 6 6 6m8-12 6 6-6 6"/>',
+    task: '<path d="m9 11 3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'
+  };
+
+  function setSection(next) {
+    section = next;
+    const showingImages = section === 'images';
+    byId('imagesPanel').hidden = !showingImages;
+    byId('clipsSection').hidden = showingImages;
+    byId('imagesTab').setAttribute('aria-selected', String(showingImages));
+    byId('clipsTab').setAttribute('aria-selected', String(!showingImages));
+    byId('imagesTab').tabIndex = showingImages ? 0 : -1;
+    byId('clipsTab').tabIndex = showingImages ? -1 : 0;
+  }
+  function setTabCount(id, count) {
+    const badge = byId(id);
+    badge.hidden = count === 0;
+    badge.textContent = count ? String(count) : '';
+  }
+  function updatePairingStatus(macs) {
+    const count = macs.length;
+    const status = byId('pairStatus');
+    status.classList.toggle('connected', count > 0);
+    status.textContent = count === 1
+      ? `Connected to ${macs[0].name || 'Mac'} ✓`
+      : count > 1 ? `Connected to ${count} Macs ✓` : 'No Mac connected yet';
+    byId('pairToggle').textContent = count ? 'Add Mac' : 'Pair Mac';
+  }
 
   function showError(message) {
     byId('error').textContent = message || '';
@@ -60,6 +95,25 @@
       startPolling();
     }
   }
+  async function connectFromQr() {
+    const connectId = new URLSearchParams(location.hash.slice(1)).get('connect');
+    if (!connectId) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    if (!/^[a-f0-9]{64}$/.test(connectId)) { notify('This connection link is invalid.'); return; }
+    try {
+      if (!device) {
+        device = await api('/api/devices/register', { method: 'POST', body: JSON.stringify({ name: 'Android phone' }) });
+        localStorage.setItem(KEY, JSON.stringify(device));
+        applyDevice();
+      }
+      await api('/api/connect/claim', { method: 'POST', body: JSON.stringify({ connectId }) });
+      byId('pairBox').hidden = true;
+      updatePairingStatus([{ name: 'Mac Chrome' }]);
+      notify('Phone connected! Your recent clips will appear here.', 'success');
+      setSection('clips');
+      pollClips();
+    } catch (err) { showError(err.message); notify(`Could not connect: ${err.message}`); }
+  }
   byId('registerForm').onsubmit = async event => {
     event.preventDefault();
     const button = event.target.querySelector('button'); button.disabled = true; showError('');
@@ -69,7 +123,12 @@
     } catch (err) { showError(err.message); }
     finally { button.disabled = false; }
   };
-  byId('pairToggle').onclick = () => { byId('pairBox').hidden = !byId('pairBox').hidden; };
+  byId('pairToggle').onclick = async () => {
+    byId('pairBox').hidden = !byId('pairBox').hidden;
+    if (!byId('pairBox').hidden && (!device?.pairingCode || device.pairingExpiresAt <= Date.now())) {
+      byId('newCode').click();
+    }
+  };
   byId('newCode').onclick = async () => {
     try {
       const result = await api(`/api/devices/${encodeURIComponent(device.deviceId)}/pair-code`, { method: 'POST' });
@@ -278,6 +337,7 @@
       releaseImage(item.id);
       if (previewItem?.id === item.id) closePreview();
       const count = byId('items').children.length;
+      setTabCount('imageCount', count);
       byId('status').textContent = count ? `${count} image${count === 1 ? '' : 's'} available for 24 hours` : 'Waiting for images…';
       notify('Removed from this phone and temporary storage. Your Mac image is untouched.', 'success');
     } catch (err) {
@@ -381,6 +441,68 @@
       }
     }
     byId('status').textContent = items.length ? `${items.length} image${items.length === 1 ? '' : 's'} available for 24 hours` : 'Waiting for images…';
+    setTabCount('imageCount', items.length);
+  }
+  async function shareClip(item) {
+    const text = item.type === 'link' ? (item.url || item.content || '') : (item.full || item.content || '');
+    if (!navigator.share) {
+      notify('Sharing is unavailable in this browser. Use Copy instead.');
+      return;
+    }
+    try {
+      await navigator.share(item.type === 'link'
+        ? { title: item.content || 'CacheTray link', url: text }
+        : { title: 'CacheTray clip', text });
+    } catch (err) {
+      if (err.name !== 'AbortError') notify('Could not share this clip. Use Copy instead.');
+    }
+  }
+  function renderClips(items) {
+    lastClips = items;
+    const container = byId('clips');
+    container.replaceChildren();
+    setTabCount('clipCount', items.length);
+    const visible = clipFilter === 'all' ? items : items.filter(item => item.type === clipFilter);
+    if (!visible.length) {
+      const empty = document.createElement('p'); empty.className = 'clips-empty';
+      empty.textContent = items.length ? `No ${clipFilter === 'link' ? 'links' : clipFilter + ' clips'} yet.` : 'No recent clips yet. Copy something on your Mac.';
+      container.appendChild(empty); return;
+    }
+    for (const item of visible) {
+      const clipType = Object.hasOwn(CLIP_ICONS, item.type) ? item.type : 'text';
+      const card = document.createElement('article'); card.className = `clip-card clip-${clipType}`;
+      const icon = document.createElement('span'); icon.className = 'clip-icon'; icon.setAttribute('aria-hidden', 'true');
+      icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${CLIP_ICONS[clipType]}</svg>`;
+      const body = document.createElement('div'); body.className = 'clip-text';
+      const type = document.createElement('span'); type.className = 'clip-type';
+      type.textContent = `${item.type} · ${item.senderName || 'Mac'}`;
+      const content = document.createElement('span');
+      content.textContent = item.full || item.content || item.url || '(empty clip)';
+      body.append(type, content);
+      const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'secondary'; copy.textContent = 'Copy';
+      copy.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(item.type === 'link' ? (item.url || item.content) : (item.full || item.content || ''));
+          copy.textContent = 'Copied ✓'; setTimeout(() => { if (copy.isConnected) copy.textContent = 'Copy'; }, 1800);
+        } catch (_) { notify('Could not copy this clip. Try selecting its text.'); }
+      };
+      const shareButton = document.createElement('button');
+      shareButton.type = 'button'; shareButton.className = 'secondary clip-share';
+      shareButton.title = 'Share clip'; shareButton.setAttribute('aria-label', `Share ${item.type} clip`);
+      shareButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5M8 13l8 5"/></svg>';
+      shareButton.onclick = () => shareClip(item);
+      const actions = document.createElement('div'); actions.className = 'clip-actions';
+      actions.append(copy, shareButton);
+      card.append(icon, body, actions); container.appendChild(card);
+    }
+  }
+  async function pollClips() {
+    if (!device || document.hidden || !navigator.onLine) return;
+    try {
+      const result = await api(`/api/devices/${encodeURIComponent(device.deviceId)}/clips`);
+      renderClips(result.items || []);
+      if (Array.isArray(result.pairedMacs)) updatePairingStatus(result.pairedMacs);
+    } catch (err) { showError(err.message); }
   }
   async function poll() {
     if (!device || document.hidden || !navigator.onLine) return;
@@ -392,10 +514,13 @@
   }
   function startPolling() {
     if (pollTimer) clearInterval(pollTimer);
-    poll(); pollTimer = setInterval(poll, 2500);
+    if (clipTimer) clearInterval(clipTimer);
+    poll(); pollClips();
+    pollTimer = setInterval(poll, 2500);
+    clipTimer = setInterval(pollClips, 15000);
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
-  window.addEventListener('online', poll);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { poll(); pollClips(); } });
+  window.addEventListener('online', () => { poll(); pollClips(); });
   byId('closePreview').onclick = closePreview;
   byId('preview').addEventListener('click', event => { if (event.target === byId('preview')) closePreview(); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !byId('preview').hidden) closePreview(); });
@@ -403,6 +528,23 @@
   byId('downloadPreview').onclick = () => { if (previewItem) download(previewItem, byId('downloadPreview')); };
   byId('gridView').onclick = () => { view = 'grid'; localStorage.setItem(VIEW_KEY, view); updateView(); };
   byId('listView').onclick = () => { view = 'list'; localStorage.setItem(VIEW_KEY, view); updateView(); };
+  byId('imagesTab').onclick = () => setSection('images');
+  byId('clipsTab').onclick = () => setSection('clips');
+  byId('clipFilters').addEventListener('click', event => {
+    const button = event.target.closest('button[data-filter]');
+    if (!button) return;
+    clipFilter = button.dataset.filter;
+    byId('clipFilters').querySelectorAll('button').forEach(option => {
+      option.setAttribute('aria-pressed', String(option === button));
+    });
+    renderClips(lastClips);
+  });
+  byId('imagesTab').onkeydown = byId('clipsTab').onkeydown = event => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const next = section === 'images' ? 'clips' : 'images';
+    setSection(next); byId(next === 'images' ? 'imagesTab' : 'clipsTab').focus();
+  };
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault(); installPrompt = event; byId('installApp').hidden = false;
   });
@@ -415,6 +557,8 @@
   window.addEventListener('appinstalled', () => { byId('installApp').hidden = true; installPrompt = null; });
   if (window.matchMedia('(display-mode: standalone)').matches) byId('installApp').hidden = true;
   updateView();
+  setSection('images');
   applyDevice();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js?v=7').catch(() => {});
+  connectFromQr();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js?v=11').catch(() => {});
 })();

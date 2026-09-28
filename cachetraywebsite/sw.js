@@ -1,5 +1,5 @@
-const CACHE = 'cachetray-phone-v7';
-const SHELL = ['/received.html', '/received.css?v=7', '/received.js?v=7', '/transfer-config.js?v=7', '/logo-icon.png', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'cachetray-phone-v11';
+const SHELL = ['/received.html', '/received.css?v=11', '/received.js?v=11', '/transfer-config.js?v=11', '/logo-icon.png', '/icon-192.png', '/icon-512.png'];
 const FRESH_ASSETS = new Set(['/received.html', '/received.css', '/received.js', '/transfer-config.js']);
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));

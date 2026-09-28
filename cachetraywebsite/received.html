@@ -3,7 +3,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#101014"><meta name="description" content="Receive images from CacheTray on your phone">
   <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/logo-icon.png">
-  <link rel="stylesheet" href="/received.css?v=7"><title>Received · CacheTray</title>
+  <link rel="stylesheet" href="/received.css?v=11"><title>Received · CacheTray</title>
 </head><body>
   <header><img src="/logo-icon.png" alt="" width="32" height="32"><strong>CacheTray</strong><span>Received</span><button id="installApp" type="button" class="secondary install-app" hidden>Install app</button></header>
   <main>
@@ -13,7 +13,7 @@
         <button type="submit">Create phone inbox</button></form>
     </section>
     <section id="inbox" hidden>
-      <div class="heading"><div><h1>Received</h1><p id="deviceLabel"></p></div><button id="pairToggle" type="button" class="secondary">Pair Mac</button></div>
+      <div class="heading"><div><h1>Received</h1><p id="deviceLabel"></p><p id="pairStatus" class="pair-status" role="status">Checking connection…</p></div><button id="pairToggle" type="button" class="secondary">Pair Mac</button></div>
       <div id="pairBox" hidden><p id="pairInstructions">Type these three words into the extension’s Send to Phone window. They expire in 10 minutes.</p>
         <div class="pair-code-row"><div id="pairCode" class="code"></div><button id="copyPairCode" type="button" class="secondary copy-code">
           <svg class="copy-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h3"/></svg>
@@ -21,14 +21,31 @@
           <span id="copyPairCodeLabel">Copy code</span></button></div>
         <div id="copyFeedback" class="copy-feedback" aria-live="polite"></div>
         <button id="newCode" type="button" class="secondary new-pair-code">Generate new code</button></div>
-      <div class="inbox-toolbar"><p id="status" role="status">Waiting for images…</p>
-        <div class="view-switch" role="group" aria-label="Inbox layout">
-          <button id="gridView" type="button" class="view-button" aria-pressed="true">Grid</button>
-          <button id="listView" type="button" class="view-button" aria-pressed="false">List</button>
-        </div>
+      <div class="inbox-tabs" role="tablist" aria-label="Received items">
+        <button id="imagesTab" type="button" role="tab" aria-controls="imagesPanel" aria-selected="true">Images <span id="imageCount" class="tab-count" hidden></span></button>
+        <button id="clipsTab" type="button" role="tab" aria-controls="clipsSection" aria-selected="false">Clips <span id="clipCount" class="tab-count" hidden></span></button>
       </div>
-      <p id="viewHint" class="view-hint"></p>
-      <div id="items" class="items-grid"></div>
+      <section id="imagesPanel" role="tabpanel" aria-labelledby="imagesTab">
+        <div class="inbox-toolbar"><p id="status" role="status">Waiting for images…</p>
+          <div class="view-switch" role="group" aria-label="Image layout">
+            <button id="gridView" type="button" class="view-button" aria-pressed="true">Grid</button>
+            <button id="listView" type="button" class="view-button" aria-pressed="false">List</button>
+          </div>
+        </div>
+        <p id="viewHint" class="view-hint"></p>
+        <div id="items" class="items-grid"></div>
+      </section>
+      <section id="clipsSection" class="clips-section" role="tabpanel" aria-labelledby="clipsTab" hidden>
+        <div class="clips-heading"><h2>Recent clips</h2><span>Text, links, code &amp; tasks · 24 hours</span></div>
+        <div id="clipFilters" class="clip-filters" role="group" aria-label="Filter clips by type">
+          <button type="button" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" data-filter="text" aria-pressed="false">Text</button>
+          <button type="button" data-filter="link" aria-pressed="false">Links</button>
+          <button type="button" data-filter="code" aria-pressed="false">Code</button>
+          <button type="button" data-filter="task" aria-pressed="false">Tasks</button>
+        </div>
+        <div id="clips" class="clips-list"><p class="clips-empty">Waiting for clips…</p></div>
+      </section>
     </section>
     <p id="error" role="alert"></p>
   </main>
@@ -39,5 +56,5 @@
     <p id="previewError" class="preview-error" role="alert"></p>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-  <script src="/transfer-config.js?v=7"></script><script src="/received.js?v=7"></script>
+  <script src="/transfer-config.js?v=11"></script><script src="/received.js?v=11"></script>
 </body></html>
