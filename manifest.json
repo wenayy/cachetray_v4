@@ -1,0 +1,85 @@
+{
+  "manifest_version": 3,
+  "name": "CacheTray – Clipboard for AI Chats",
+  "description": "Copy screenshots, links and code — send them directly to Claude or ChatGPT in one click. Your clipboard for AI workflows.",
+  "version": "1.5.2",
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_title": "CacheTray",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidebar.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "oauth2": {
+    "client_id": "488758248671-2udempknv0lhk27snukpj6qu11sc2o4s.apps.googleusercontent.com",
+    "scopes": ["openid", "email", "profile"]
+  },
+  "permissions": [
+    "storage",
+    "identity",
+    "contextMenus",
+    "activeTab",
+    "scripting",
+    "offscreen",
+    "clipboardRead",
+    "clipboardWrite",
+    "sidePanel",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "injected.js"
+      ],
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Open CacheTray popup"
+    },
+    "toggle_palette": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Open CacheTray palette"
+    },
+    "save_to_tray": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      },
+      "description": "Save clipboard to CacheTray"
+    }
+  }
+}

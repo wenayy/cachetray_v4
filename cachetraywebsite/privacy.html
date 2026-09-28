@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Privacy Policy — CacheTray</title>
+<link rel="icon" type="image/png" href="logo-icon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0d0d0d; --bg2:#141414; --bg3:#1c1c1c;
+  --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.13);
+  --text:#f0ede8; --muted:#8a8680; --faint:#4a4744;
+  --lime:#c8f060; --lime-dim:rgba(200,240,96,0.1); --lime-glow:rgba(200,240,96,0.2);
+  --green:#34d399;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  line-height:1.7; overflow-x:hidden;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:0;
+}
+
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  padding:0 32px; height:64px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:rgba(13,13,13,0.8);
+  backdrop-filter:blur(20px);
+  border-bottom:0.5px solid var(--line);
+  transition:background 0.25s, box-shadow 0.25s;
+}
+nav.scrolled {
+  background:rgba(13,13,13,0.98);
+  box-shadow:0 0 0 0.5px var(--line), 0 4px 32px rgba(0,0,0,0.4);
+}
+.nav-logo {
+  display:flex; align-items:center; gap:10px;
+  font-size:18px; font-weight:700; color:var(--text);
+  text-decoration:none; letter-spacing:-0.3px;
+}
+.nav-logo-icon {
+  width:32px; height:32px; background:var(--lime);
+  border-radius:8px; display:flex; align-items:center;
+  justify-content:center; font-size:16px;
+}
+.nav-logo-icon-img { height:52px; width:52px; display:block; border-radius:12px; flex-shrink:0; }
+.nav-logo-text { color:var(--text); font-size:20px; font-weight:800; letter-spacing:-0.4px; }
+.back-link {
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px; color:var(--muted);
+  text-decoration:none; display:flex; align-items:center; gap:6px;
+  transition:color 0.15s;
+}
+.back-link:hover { color:var(--text); }
+
+main {
+  position:relative; z-index:1;
+  max-width:720px; margin:0 auto;
+  padding:120px 32px 100px;
+}
+
+.pp-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--lime-dim);
+  border:0.5px solid var(--lime-glow);
+  border-radius:20px; padding:6px 14px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; font-weight:600; color:var(--lime);
+  margin-bottom:24px;
+}
+
+h1 {
+  font-family:'DM Serif Display',serif;
+  font-size:clamp(40px,6vw,64px);
+  font-weight:400; letter-spacing:-1.5px;
+  line-height:1.05; margin-bottom:12px;
+}
+
+.updated {
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px; color:var(--faint);
+  margin-bottom:48px;
+}
+
+.tl-dr {
+  background:var(--bg2);
+  border:0.5px solid var(--lime-glow);
+  border-radius:14px; padding:28px;
+  margin-bottom:56px;
+}
+.tl-dr-title {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; font-weight:700;
+  color:var(--lime); letter-spacing:2px;
+  text-transform:uppercase; margin-bottom:18px;
+}
+.tl-dr-item {
+  display:flex; align-items:flex-start; gap:10px;
+  margin-bottom:12px; font-size:14px; color:var(--muted);
+}
+.tl-dr-item:last-child { margin-bottom:0; }
+.check { color:var(--green); flex-shrink:0; margin-top:2px; font-weight:700; }
+
+h2 {
+  font-family:'DM Serif Display',serif;
+  font-size:22px; font-weight:400;
+  color:var(--text); letter-spacing:-0.3px;
+  margin:48px 0 14px;
+  padding-top:48px;
+  border-top:0.5px solid var(--line);
+}
+h2:first-of-type { margin-top:0; border-top:none; padding-top:0; }
+
+p { font-size:15px; color:var(--muted); margin-bottom:14px; line-height:1.75; }
+ul { padding-left:20px; margin-bottom:14px; }
+li { font-size:15px; color:var(--muted); margin-bottom:8px; line-height:1.65; }
+strong { color:var(--text); font-weight:600; }
+a { color:var(--lime); text-decoration:none; }
+a:hover { text-decoration:underline; }
+
+.perm-table {
+  width:100%; border-collapse:collapse;
+  margin:20px 0; border-radius:12px; overflow:hidden;
+  border:0.5px solid var(--line);
+}
+.perm-table th {
+  background:var(--bg3);
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; font-weight:600;
+  color:var(--muted); text-transform:uppercase;
+  letter-spacing:1px; padding:12px 16px; text-align:left;
+}
+.perm-table td {
+  padding:14px 16px; font-size:13px; color:var(--muted);
+  border-top:0.5px solid var(--line); line-height:1.6;
+}
+.perm-table tr:hover td { background:var(--bg3); }
+.perm-name {
+  font-family:'JetBrains Mono',monospace;
+  color:var(--lime); font-size:12px;
+  white-space:nowrap;
+}
+
+.divider { height:0.5px; background:var(--line); margin:0; }
+
+footer {
+  position:relative; z-index:1;
+  border-top:0.5px solid var(--line);
+  padding:28px 32px;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:12px;
+}
+.footer-left {
+  display:flex; align-items:center; gap:10px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px; color:var(--faint);
+}
+.footer-links { display:flex; gap:24px; }
+.footer-links a {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--faint);
+  text-decoration:none; transition:color 0.15s;
+}
+.footer-links a:hover { color:var(--muted); }
+
+@media (max-width:700px) {
+  nav { padding:0 20px; }
+  main { padding:100px 20px 80px; }
+  footer { flex-direction:column; text-align:center; }
+}
+
+@media (max-width:480px) {
+  nav { padding:0 16px; }
+  main { padding:90px 16px 60px; }
+  .perm-table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+}
+</style>
+</head>
+<body>
+
+<nav id="siteNav">
+  <a href="index.html" class="nav-logo">
+    <img src="logo-icon.png" alt="CacheTray" class="nav-logo-icon-img"/><span class="nav-logo-text">CacheTray</span>
+  </a>
+  <a href="index.html" class="back-link">← Back to home</a>
+</nav>
+
+<main>
+  <div class="pp-badge">🔐 Privacy Policy</div>
+  <h1>Your prompt context<br>stays yours.</h1>
+  <div class="updated">Last updated: September 2026 · Send to Phone preview</div>
+
+  <div class="tl-dr">
+    <div class="tl-dr-title">TL;DR — The short version</div>
+    <div class="tl-dr-item"><span class="check">✓</span> Saved items stay local unless you explicitly turn on cloud sync or Send to Phone.</div>
+    <div class="tl-dr-item"><span class="check">✓</span> Send to Phone uploads only the image you select; other saved items remain local.</div>
+    <div class="tl-dr-item"><span class="check">✓</span> Temporary transfer images are available for 24 hours, then hidden and deleted by bucket lifecycle.</div>
+    <div class="tl-dr-item"><span class="check">✓</span> Deleting or uninstalling the extension removes local data, not existing cloud transfers immediately.</div>
+    <div class="tl-dr-item"><span class="check">✓</span> CacheTray can stage prompt assets for AI chats, but we never receive that content.</div>
+  </div>
+
+  <h2>What CacheTray stores</h2>
+  <p>CacheTray stores the following data <strong>locally on your device</strong> using your browser's built-in storage API:</p>
+  <ul>
+    <li>Prompt assets you copy — screenshots, images, links, code snippets, plain text, and notes</li>
+    <li>Workspace names, tab colors, and organization preferences</li>
+    <li>Category filter preferences and favourite items</li>
+    <li>Timestamps of when items were saved</li>
+    <li>Auto-capture toggle state (on/off)</li>
+  </ul>
+  <p>This data stays in browser-managed storage by default. Optional cloud sync and Send to Phone are separate, explicit actions described below.</p>
+
+  <h2>What we do NOT collect</h2>
+  <ul>
+    <li>No personal information is required for local-only use. Optional Google cloud sync uses your account email; Send to Phone uses a device name and random device identifier.</li>
+    <li>No browsing history or URLs of pages you visit</li>
+    <li>No analytics, telemetry, or usage statistics</li>
+    <li>No crash reports or error logs sent anywhere</li>
+    <li>No analytics-based device tracking. The transfer backend processes a random device ID, and Cloudflare may process request IP addresses in its service logs.</li>
+    <li>No payment or financial information</li>
+  </ul>
+
+  <h2>Where your data goes</h2>
+  <p><strong>Local by default.</strong> If you use Send to Phone, the selected image is uploaded directly from your extension to a private Cloudflare R2 bucket using a short-lived upload URL. A Cloudflare Worker/D1 backend stores the filename, MIME type, size, device IDs, and transfer times. The paired phone can request a short-lived download URL. The original image remains in local IndexedDB. The transfer is hidden after 24 hours; R2 lifecycle deletion may take longer. Optional Google cloud sync is a separate feature using Firebase and is off unless you sign in.</p>
+  <p>Separately, when you use the right-click "Save image" feature, your browser may fetch the image URL to save it locally. This is a standard browser action — not an upload to our transfer service.</p>
+
+  <h2>Permissions and why we need them</h2>
+  <table class="perm-table">
+    <thead>
+      <tr><th>Permission</th><th>Why it's needed</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="perm-name">clipboardRead</td><td>To automatically detect and save copied prompt assets (Ctrl+C) into your local workspace.</td></tr>
+      <tr><td class="perm-name">clipboardWrite</td><td>To copy a saved item back to your clipboard when you click copy inside the extension.</td></tr>
+      <tr><td class="perm-name">storage</td><td>To save your notes, workspaces, and preferences locally, plus opt-in pairing information.</td></tr>
+      <tr><td class="perm-name">activeTab</td><td>To read the current tab's URL and title when you click "Save current tab". Only triggered by your explicit action.</td></tr>
+      <tr><td class="perm-name">scripting</td><td>To inject a lightweight script that detects copy events and inserts selected text/images into focused inputs such as AI chat composers.</td></tr>
+      <tr><td class="perm-name">contextMenus</td><td>To add right-click options — Save link, Save image, Save selection — directly from any webpage.</td></tr>
+      <tr><td class="perm-name">offscreen</td><td>Required by Chrome Manifest V3 to access clipboard data in the background while keeping everything local.</td></tr>
+      <tr><td class="perm-name">sidePanel</td><td>To open CacheTray as a persistent side panel beside Claude, ChatGPT, NotebookLM, docs, or research tabs. No data is transmitted by opening the panel.</td></tr>
+      <tr><td class="perm-name">&lt;all_urls&gt;</td><td>To inject the copy-detection script across all websites. The script only listens for copy events — it does not read page content, track navigation, or transmit anything.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Third-party services</h2>
+  <p>Local-only use does not require the transfer service. Send to Phone uses Cloudflare Worker, D1, and private R2 storage. Optional Google cloud sync uses Google/Firebase. We do not add analytics or advertising to Send to Phone.</p>
+  <p>This privacy policy page loads fonts from Google Fonts for display only — this is limited to this webpage and has no connection to the extension's functionality.</p>
+
+  <h2>Data retention and deletion</h2>
+  <p>Local CacheTray items are automatically removed after <strong>3 days</strong> unless retained by existing app behavior. Send to Phone transfers are visible for 24 hours; the R2 lifecycle rule removes the transferred object after roughly one day, with possible processing delay. Transfer metadata is currently retained in D1 after expiry but no longer returned in the phone inbox. You can delete local data manually:</p>
+  <ul>
+    <li>Delete individual items using the trash icon</li>
+    <li>Bulk-select and delete multiple items at once</li>
+    <li>Clear an entire workspace with the "Clear all" button</li>
+    <li>Uninstall the extension to delete its local data; this does not immediately delete previously sent R2 transfers</li>
+  </ul>
+
+  <h2>Children's privacy</h2>
+  <p>CacheTray is not directed at children under 13. We do not knowingly collect data from children.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy is updated, the "Last updated" date at the top of this page will reflect the change. Significant changes will also be noted in the extension's store changelog.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this privacy policy? Reach out at: <a href="mailto:vinayjjoshi.310@gmail.com">vinayjjoshi.310@gmail.com</a></p>
+</main>
+
+<footer>
+  <div class="footer-left">
+    <img src="logo-icon.png" alt="CacheTray" style="height:24px;width:24px;border-radius:5px;flex-shrink:0;"/>
+    CacheTray · Built for AI prompters
+  </div>
+  <div class="footer-links">
+    <a href="index.html">Home</a>
+    <a href="mailto:vinayjjoshi.310@gmail.com">Contact</a>
+  </div>
+</footer>
+
+<script>
+const nav = document.getElementById('siteNav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 12);
+}, { passive: true });
+</script>
+</body>
+</html>

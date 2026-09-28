@@ -1,0 +1,22 @@
+{
+  "name": "cachetray-transfer-api",
+  "account_id": "257d1382cd7a62b32959c41c3257bf19",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "vars": {
+    "R2_ACCOUNT_ID": "257d1382cd7a62b32959c41c3257bf19",
+    "R2_BUCKET_NAME": "cachetray-transfers",
+    "WEB_ORIGIN": "https://cachetray.gitflex.lol",
+    "EXTENSION_ORIGIN": "chrome-extension://nhdjbajopcmidkibmebcijccdbdhmpna"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cachetray-transfers",
+      "database_id": "b7dd6a70-f5b6-4f40-8b43-b84c8a0c5cd8"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "OBJECTS", "bucket_name": "cachetray-transfers" }
+  ]
+}

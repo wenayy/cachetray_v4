@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101014"><meta name="description" content="Receive images from CacheTray on your phone">
+  <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/logo-icon.png">
+  <link rel="stylesheet" href="/received.css?v=7"><title>Received · CacheTray</title>
+</head><body>
+  <header><img src="/logo-icon.png" alt="" width="32" height="32"><strong>CacheTray</strong><span>Received</span><button id="installApp" type="button" class="secondary install-app" hidden>Install app</button></header>
+  <main>
+    <section id="setup" hidden>
+      <h1>Set up this phone</h1><p>Give this phone a name. CacheTray will create a pairing code for your Mac.</p>
+      <form id="registerForm"><label for="deviceName">Device name</label><input id="deviceName" value="Android phone" maxlength="60" required>
+        <button type="submit">Create phone inbox</button></form>
+    </section>
+    <section id="inbox" hidden>
+      <div class="heading"><div><h1>Received</h1><p id="deviceLabel"></p></div><button id="pairToggle" type="button" class="secondary">Pair Mac</button></div>
+      <div id="pairBox" hidden><p id="pairInstructions">Type these three words into the extension’s Send to Phone window. They expire in 10 minutes.</p>
+        <div class="pair-code-row"><div id="pairCode" class="code"></div><button id="copyPairCode" type="button" class="secondary copy-code">
+          <svg class="copy-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h3"/></svg>
+          <svg class="copy-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+          <span id="copyPairCodeLabel">Copy code</span></button></div>
+        <div id="copyFeedback" class="copy-feedback" aria-live="polite"></div>
+        <button id="newCode" type="button" class="secondary new-pair-code">Generate new code</button></div>
+      <div class="inbox-toolbar"><p id="status" role="status">Waiting for images…</p>
+        <div class="view-switch" role="group" aria-label="Inbox layout">
+          <button id="gridView" type="button" class="view-button" aria-pressed="true">Grid</button>
+          <button id="listView" type="button" class="view-button" aria-pressed="false">List</button>
+        </div>
+      </div>
+      <p id="viewHint" class="view-hint"></p>
+      <div id="items" class="items-grid"></div>
+    </section>
+    <p id="error" role="alert"></p>
+  </main>
+  <div id="preview" class="preview" hidden role="dialog" aria-modal="true" aria-label="Image preview">
+    <button id="closePreview" type="button" class="close" aria-label="Close preview">×</button>
+    <div class="previewBody"><img id="previewImage" alt="Received image"><p id="previewLoading" role="status" hidden>Loading image…</p></div>
+    <div class="previewBar"><span id="previewName"></span><div class="previewActions"><button id="sharePreview" type="button" class="secondary" disabled>Share</button><button id="downloadPreview" type="button" disabled>Download</button></div></div>
+    <p id="previewError" class="preview-error" role="alert"></p>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="/transfer-config.js?v=7"></script><script src="/received.js?v=7"></script>
+</body></html>

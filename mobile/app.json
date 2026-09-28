@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "CacheTray",
+    "slug": "cachetray-mobile",
+    "scheme": "cachetray",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "plugins": [
+      [
+        "@react-native-google-signin/google-signin",
+        { "iosUrlScheme": "com.googleusercontent.apps.placeholder" }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cachetray.mobile"
+    },
+    "android": {
+      "package": "com.cachetray.mobile"
+    }
+  }
+}

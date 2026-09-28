@@ -1,0 +1,3353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CacheTray — AI Clipboard for ChatGPT &amp; Claude</title>
+<meta name="description" content="Save screenshots, links, code and notes in a local tray while you browse, then send selected context to ChatGPT or Claude in one click. Free Chrome extension, no account required."/>
+<meta name="keywords" content="clipboard manager, ChatGPT extension, Claude extension, AI workflow, screenshot to ChatGPT, AI clipboard, send screenshots to AI, clipboard for AI"/>
+<link rel="icon" type="image/png" href="logo-icon.png"/>
+<link rel="manifest" href="/manifest.webmanifest"/>
+<meta name="theme-color" content="#101014"/>
+<link rel="canonical" href="https://cachetray.weenay.com/"/>
+<link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://cachetray.weenay.com/"/>
+<meta property="og:title" content="CacheTray — AI Clipboard for ChatGPT &amp; Claude"/>
+<meta property="og:description" content="Save screenshots, links, code and notes while browsing. Send selected context to ChatGPT or Claude in one click. Free, local, no account."/>
+<meta property="og:image" content="https://cachetray.weenay.com/og-image.png"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="CacheTray — AI Clipboard for ChatGPT &amp; Claude"/>
+<meta name="twitter:description" content="Save screenshots, links, code and notes while browsing. Send selected context to ChatGPT or Claude in one click."/>
+<meta name="twitter:image" content="https://cachetray.weenay.com/og-image.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0d0d0d;
+  --bg2: #141414;
+  --bg3: #1c1c1c;
+  --line: rgba(255,255,255,0.07);
+  --line2: rgba(255,255,255,0.13);
+  --text: #f0ede8;
+  --muted: #8a8680;
+  --faint: #4a4744;
+  --lime: #c8f060;
+  --lime-dim: rgba(200,240,96,0.12);
+  --lime-glow: rgba(200,240,96,0.25);
+  --purple: #a78bfa;
+  --blue: #60a5fa;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --green: #34d399;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+html { scroll-behavior:smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+  cursor: default;
+}
+
+/* ── Noise texture overlay ── */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:0;
+}
+
+/* ── Nav ── */
+nav {
+  position:fixed; top:0; left:0; right:0;
+  z-index:100;
+  padding:0 32px;
+  height:64px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:rgba(13,13,13,0.8);
+  backdrop-filter:blur(20px);
+  border-bottom:0.5px solid var(--line);
+}
+
+.nav-logo {
+  display:flex; align-items:center; gap:12px;
+  font-size:20px; font-weight:800; color:var(--text);
+  letter-spacing:-0.4px;
+  text-decoration:none;
+}
+.nav-logo-text { color:var(--text); }
+
+.nav-logo-icon-img {
+  height:42px;
+  width:42px;
+  display:block;
+  border-radius:11px;
+  flex-shrink:0;
+  box-shadow:0 0 12px rgba(200,240,96,0.45), 0 0 28px rgba(200,240,96,0.18);
+  transition:box-shadow 0.2s;
+}
+.nav-logo:hover .nav-logo-icon-img {
+  box-shadow:0 0 18px rgba(200,240,96,0.65), 0 0 40px rgba(200,240,96,0.28);
+}
+
+.nav-links { display:flex; align-items:center; gap:32px; }
+
+.nav-links a {
+  font-size:13px; font-weight:500;
+  color:var(--muted);
+  text-decoration:none;
+  transition:color 0.15s;
+  font-family:'JetBrains Mono',monospace;
+}
+
+.nav-links a:hover { color:var(--text); }
+
+.nav-cta {
+  display:flex; align-items:center; gap:8px;
+}
+
+.btn-primary {
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--lime); color:#0d1a00;
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px; font-weight:600;
+  padding:10px 20px; border-radius:8px;
+  text-decoration:none;
+  transition:all 0.15s;
+  border:none; cursor:pointer;
+  white-space:nowrap;
+}
+
+.btn-primary:hover {
+  background:#d8ff70;
+  transform:translateY(-1px);
+  box-shadow:0 8px 24px rgba(200,240,96,0.3);
+}
+
+.btn-ghost {
+  display:inline-flex; align-items:center; gap:6px;
+  background:transparent; color:var(--muted);
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px; font-weight:500;
+  padding:10px 16px; border-radius:8px;
+  text-decoration:none; border:0.5px solid var(--line2);
+  transition:all 0.15s; cursor:pointer;
+}
+
+.btn-ghost:hover { color:var(--text); border-color:var(--line2); background:var(--bg3); }
+
+/* ── Hero ── */
+.hero {
+  min-height:calc(100vh - 96px);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:100px 32px 80px;
+  position:relative; overflow:hidden;
+}
+
+/* Animated grid background */
+.hero::after {
+  content:'';
+  position:absolute; inset:-50%;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:60px 60px;
+  animation:gridDrift 20s linear infinite;
+  pointer-events:none;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 50%, black 0%, transparent 70%);
+}
+
+@keyframes gridDrift {
+  0%   { transform:translate(0,0); }
+  100% { transform:translate(60px,60px); }
+}
+
+/* Lime glow orb */
+.hero-orb {
+  position:absolute;
+  width:600px; height:600px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(200,240,96,0.08) 0%, transparent 70%);
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  animation:orbPulse 4s ease-in-out infinite;
+}
+
+@keyframes orbPulse {
+  0%,100% { transform:translate(-50%,-50%) scale(1); opacity:1; }
+  50%      { transform:translate(-50%,-50%) scale(1.1); opacity:0.7; }
+}
+
+.hero-content {
+  position:relative; z-index:1;
+  text-align:center;
+  max-width:900px;
+}
+
+.hero-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--lime-dim);
+  border:0.5px solid var(--lime-glow);
+  border-radius:20px;
+  padding:6px 14px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; font-weight:600;
+  color:var(--lime);
+  margin-bottom:32px;
+  animation:fadeUp 0.8s ease both;
+}
+
+.hero-badge-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--lime);
+  animation:pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.hero-title {
+  font-size:clamp(44px,6vw,80px);
+  font-weight:700;
+  line-height:1.0;
+  letter-spacing:-2px;
+  margin-bottom:24px;
+  animation:fadeUp 0.8s ease 0.1s both;
+  font-family:'DM Serif Display', serif;
+}
+
+.hero-title-line2 {
+  color:var(--lime);
+  display:block;
+}
+
+.hero-sub {
+  font-size:16px; font-weight:400;
+  color:var(--muted);
+  max-width:480px; margin:0 auto 40px;
+  line-height:1.75;
+  animation:fadeUp 0.8s ease 0.2s both;
+}
+
+.hero-cta {
+  display:flex; align-items:center; justify-content:center;
+  gap:12px; flex-wrap:wrap;
+  animation:fadeUp 0.8s ease 0.3s both;
+  margin-bottom:80px;
+}
+
+.hero-meta {
+  display:flex; align-items:center; justify-content:center;
+  gap:24px; flex-wrap:wrap;
+  animation:fadeUp 0.8s ease 0.4s both;
+}
+
+.hero-meta-item {
+  display:flex; align-items:center; gap:6px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--faint);
+}
+
+.hero-meta-item svg { width:12px; height:12px; stroke:var(--green); fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── Demo Extension Window ── */
+.demo-wrap {
+  position:relative; z-index:1;
+  width:100%; max-width:440px; margin:0 auto;
+  animation:fadeUp 0.8s ease 0.5s both, heroFloat 5s ease-in-out 1.5s infinite;
+}
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+.ext-window {
+  background:var(--bg2);
+  border:0.5px solid var(--line2);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:
+    0 0 0 1px rgba(200,240,96,0.05),
+    0 40px 80px rgba(0,0,0,0.6),
+    0 0 120px rgba(200,240,96,0.08);
+}
+
+.ext-header {
+  padding:14px 16px 0;
+  border-bottom:0.5px solid var(--line);
+}
+
+.ext-app-bar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding-bottom:10px;
+  border-bottom:0.5px solid var(--line);
+  margin-bottom:12px;
+}
+
+.ext-app-name {
+  display:flex; align-items:center; gap:6px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px; font-weight:600; color:var(--lime);
+}
+
+.ext-app-kbd {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--faint);
+  background:#1e1e1e; border:0.5px solid var(--line2);
+  border-radius:4px; padding:2px 7px;
+}
+
+.ext-title-row {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.ext-workspace {
+  font-family:'DM Serif Display',serif;
+  font-style:italic; font-size:20px; font-weight:400;
+  color:var(--text);
+}
+
+.ext-clear {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--faint);
+  border:0.5px solid var(--line); border-radius:20px;
+  padding:3px 9px;
+}
+
+.ext-tabs {
+  display:flex; gap:6px; padding-bottom:10px; overflow:hidden;
+}
+
+.ext-tab {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; padding:4px 12px; border-radius:20px;
+  border:0.5px solid var(--line); color:var(--muted);
+  white-space:nowrap; display:flex; align-items:center; gap:5px;
+}
+
+.ext-tab.active {
+  font-weight:700; color:#0d1a00;
+}
+
+.ext-tab-dot { width:6px; height:6px; border-radius:50%; }
+
+.cat-pills {
+  display:flex; gap:6px; padding:0 16px 12px; overflow:hidden;
+  border-bottom:0.5px solid var(--line);
+}
+
+.cat-p {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; padding:4px 11px; border-radius:20px;
+  border:0.5px solid var(--line); color:var(--muted);
+  white-space:nowrap;
+}
+
+.cat-p.active {
+  background:var(--lime); color:#0d1a00;
+  border-color:var(--lime); font-weight:700;
+}
+
+/* Feed items */
+.ext-feed {
+  padding:8px 12px;
+  display:flex; flex-direction:column; gap:4px;
+  min-height:200px;
+}
+
+.feed-item {
+  border:0.5px solid var(--line);
+  border-radius:8px;
+  background:var(--bg3);
+  overflow:hidden;
+  transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  transform-origin:top;
+}
+
+.feed-item.entering {
+  animation:itemEnter 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes itemEnter {
+  from { opacity:0; transform:scaleY(0.5) translateY(-10px); }
+  to   { opacity:1; transform:scaleY(1) translateY(0); }
+}
+
+.feed-item.flash {
+  background:rgba(200,240,96,0.06);
+  border-color:rgba(200,240,96,0.3);
+}
+
+.feed-top {
+  padding:10px 12px;
+  display:flex; align-items:center; gap:10px;
+}
+
+.feed-icon {
+  width:28px; height:28px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; font-size:13px;
+}
+
+.feed-body { flex:1; min-width:0; }
+
+.feed-label {
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px; font-weight:600;
+  letter-spacing:0.8px; text-transform:uppercase;
+  margin-bottom:2px;
+}
+
+.feed-text {
+  font-size:12px; color:var(--text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+.feed-time {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--faint);
+  flex-shrink:0;
+}
+
+.feed-code {
+  padding:0 12px 10px;
+}
+
+.code-block {
+  background:#111;
+  border:0.5px solid var(--line);
+  border-radius:6px;
+  padding:8px 12px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--purple);
+  line-height:1.6;
+  overflow:hidden;
+}
+
+/* Add bar */
+.ext-add {
+  padding:10px 12px;
+  border-top:0.5px solid var(--line);
+  display:flex; align-items:center; gap:8px;
+}
+
+.ext-add-input {
+  flex:1;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px; color:var(--faint);
+}
+
+.ext-add-btn {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; padding:4px 10px;
+  border-radius:20px; border:0.5px solid;
+}
+
+.ext-add-btn.task { border-color:rgba(248,113,113,0.4); color:var(--red); }
+.ext-add-btn.text { border-color:var(--line2); color:var(--muted); }
+
+/* Toast notification */
+.toast-notif {
+  position:absolute; top:-50px; right:16px;
+  background:rgba(20,20,20,0.97);
+  border:0.5px solid var(--line2);
+  border-radius:10px;
+  padding:0;
+  width:220px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.5);
+  overflow:hidden;
+  transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  opacity:0;
+  pointer-events:none;
+}
+
+.toast-notif.show {
+  top:12px; opacity:1;
+}
+
+.toast-head {
+  padding:7px 12px 4px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--faint);
+  border-bottom:0.5px solid var(--line);
+  display:flex; align-items:center; gap:6px;
+}
+
+.toast-body {
+  padding:7px 12px 9px;
+  font-size:12px; color:var(--text); font-weight:600;
+}
+
+/* ── Sections ── */
+section {
+  position:relative; z-index:1;
+  padding:100px 32px;
+  max-width:1200px; margin:0 auto;
+  overflow:hidden;
+}
+
+.section-label {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; font-weight:600;
+  color:var(--lime); letter-spacing:2px;
+  text-transform:uppercase; margin-bottom:16px;
+}
+
+.section-title {
+  font-size:clamp(32px,4vw,52px);
+  font-weight:700; letter-spacing:-1.5px;
+  line-height:1.05;
+  margin-bottom:16px;
+  font-family:'DM Serif Display', serif;
+}
+
+.section-sub {
+  font-size:16px; color:var(--muted);
+  max-width:480px; line-height:1.7;
+}
+
+/* ── How it works ── */
+.how-grid {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:60px; align-items:center;
+  margin-top:64px;
+}
+
+.how-steps {
+  display:flex; flex-direction:column; gap:0;
+}
+
+.how-step {
+  display:flex; gap:20px;
+  padding:28px 0;
+  border-bottom:0.5px solid var(--line);
+  cursor:pointer;
+  transition:all 0.2s;
+  position:relative;
+}
+
+.how-step:first-child { border-top:0.5px solid var(--line); }
+
+.how-step.active .how-step-num {
+  background:var(--lime); color:#0d1a00;
+  border-color:var(--lime);
+}
+
+.how-step-num {
+  width:36px; height:36px; border-radius:10px;
+  border:0.5px solid var(--line2);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px; font-weight:700; color:var(--muted);
+  flex-shrink:0; transition:all 0.25s;
+}
+
+.how-step-content { flex:1; }
+
+.how-step-title {
+  font-size:16px; font-weight:700;
+  margin-bottom:6px; color:var(--text);
+}
+
+.how-step.active .how-step-title { color:var(--lime); }
+
+.how-step-desc {
+  font-size:13px; color:var(--muted); line-height:1.6;
+}
+
+/* Animated demo panel */
+.how-demo {
+  position:relative;
+}
+
+.demo-screen {
+  display:none;
+  background:var(--bg2);
+  border:0.5px solid var(--line2);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  animation:fadeIn 0.3s ease both;
+}
+
+.demo-screen.active { display:block; }
+
+@keyframes fadeIn { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
+
+/* ── Features grid ── */
+.features-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:1px;
+  background:var(--line);
+  border:0.5px solid var(--line);
+  border-radius:16px;
+  overflow:hidden;
+  margin-top:64px;
+}
+
+.feat-card {
+  background:var(--bg2);
+  padding:32px;
+  transition:background 0.2s;
+  position:relative;
+  overflow:hidden;
+}
+
+.feat-card::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg,transparent,var(--lime-glow),transparent);
+  opacity:0; transition:opacity 0.3s;
+}
+
+.feat-card:hover { background:#1a1a1a; }
+.feat-card:hover::before { opacity:1; }
+
+.feat-icon {
+  width:40px; height:40px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:20px; font-size:18px;
+}
+
+.feat-title {
+  font-size:16px; font-weight:700;
+  margin-bottom:8px; color:var(--text);
+}
+
+.feat-desc {
+  font-size:13px; color:var(--muted); line-height:1.65;
+}
+
+/* ── Types section ── */
+.types-grid {
+  display:grid; grid-template-columns:repeat(2,1fr);
+  gap:16px; margin-top:64px;
+}
+
+.type-card {
+  background:var(--bg2);
+  border:0.5px solid var(--line);
+  border-radius:14px;
+  padding:28px;
+  transition:all 0.2s;
+  position:relative;
+  overflow:hidden;
+}
+
+.type-card:hover {
+  border-color:var(--line2);
+  transform:translateY(-2px);
+  box-shadow:0 12px 32px rgba(0,0,0,0.3);
+}
+
+.type-card::after {
+  content:'';
+  position:absolute; left:0; top:0; bottom:0; width:3px;
+}
+
+.type-card.link::after { background:var(--blue); }
+.type-card.code::after { background:var(--purple); }
+.type-card.image::after { background:var(--amber); }
+.type-card.task::after { background:var(--red); }
+.type-card.text::after { background:rgba(255,255,255,0.2); }
+
+.type-tag {
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px; font-weight:600; letter-spacing:1px;
+  text-transform:uppercase; margin-bottom:12px;
+}
+
+.type-title { font-size:18px; font-weight:700; margin-bottom:6px; }
+.type-desc { font-size:13px; color:var(--muted); line-height:1.6; }
+
+.type-preview {
+  margin-top:16px;
+  background:#111;
+  border:0.5px solid var(--line);
+  border-radius:8px;
+  padding:10px 12px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; line-height:1.6;
+}
+
+/* ── CTA section ── */
+.cta-section {
+  text-align:center;
+  padding:100px 32px;
+  position:relative; z-index:1;
+  max-width:900px; margin:0 auto;
+}
+
+.cta-glow {
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 60% at 50% 50%, rgba(200,240,96,0.05), transparent);
+  pointer-events:none;
+}
+
+.cta-section .section-title { margin-bottom:24px; }
+
+/* ── Footer ── */
+footer {
+  border-top:0.5px solid var(--line);
+  padding:28px 32px;
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:24px;
+  position:relative; z-index:1;
+}
+
+.footer-left {
+  display:flex; align-items:center; gap:10px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px; color:var(--faint);
+}
+.footer-left img { height:28px; width:28px; border-radius:6px; }
+
+.footer-center {
+  display:flex; justify-content:center;
+}
+
+.footer-links {
+  display:flex; gap:24px; justify-content:flex-end;
+}
+
+.footer-links a {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--faint);
+  text-decoration:none; transition:color 0.15s;
+}
+
+.footer-links a:hover { color:var(--muted); }
+
+/* ── Scroll reveal ── */
+.reveal {
+  opacity:0; transform:translateY(32px);
+  transition:all 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+
+.reveal.visible {
+  opacity:1; transform:translateY(0);
+}
+
+/* ── Hero inner grid (replaces inline style) ── */
+.hero-inner {
+  position:relative; width:100%; max-width:1100px;
+  display:grid; grid-template-columns:1fr minmax(0,420px);
+  gap:60px; align-items:center;
+}
+
+/* ── Nav coffee button (replaces inline style) ── */
+.nav-coffee {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(255,255,255,0.06); color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px; font-weight:600;
+  padding:10px 16px; border-radius:8px;
+  text-decoration:none; border:0.5px solid var(--line2);
+  transition:all 0.15s;
+}
+.nav-coffee:hover { background:rgba(255,255,255,0.1); }
+
+/* ── Responsive ── */
+@media (max-width:900px) {
+  nav { padding:0 24px; }
+  .nav-links { display:none; }
+  .nav-coffee { display:none; }
+  .hero { padding:100px 24px 60px; }
+  .hero-inner { grid-template-columns:1fr; gap:40px; }
+  .hero-content { text-align:center !important; }
+  .hero-sub { margin-left:auto; margin-right:auto; }
+  section { padding:80px 24px; }
+  .how-grid { grid-template-columns:1fr; gap:40px; }
+  .features-grid { grid-template-columns:repeat(2,1fr); }
+  .types-grid { grid-template-columns:1fr; }
+  .stat-grid { grid-template-columns:1fr; }
+  footer { grid-template-columns:1fr; justify-items:center; gap:16px; text-align:center; }
+  .footer-links { justify-content:center; }
+}
+
+@media (max-width:600px) {
+  .features-grid { grid-template-columns:1fr; }
+  .nav-cta { display:none; }
+  .demo-wrap { display:none; }
+  .hero {
+    min-height:auto;
+    padding:76px 16px 46px;
+  }
+  .hero-title {
+    font-size:40px;
+    letter-spacing:-0.5px;
+    line-height:1.06;
+  }
+  .hero-content { max-width:100%; }
+  .hero-sub,
+  .hero-meta,
+  .hero-cta,
+  .hero-badge {
+    max-width:280px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  .hero-badge { white-space:normal; text-align:center; justify-content:center; }
+}
+
+@media (max-width:480px) {
+  nav { padding:0 16px; }
+  .hero { padding:80px 16px 60px; }
+  section { padding:60px 16px; }
+  .demo-wrap { display:none; }
+  .hero-cta { flex-direction:column; align-items:center; }
+  .hero-cta a { width:100%; justify-content:center; text-align:center; }
+  .cap-step { padding:0 12px; }
+  .stat-grid { grid-template-columns:1fr; }
+  .demo-section { padding:40px 16px; }
+  .hero-meta { gap:12px; }
+}
+
+/* ── Kbd key style ── */
+kbd {
+  background:#1a1a1a;
+  border:0.5px solid var(--line2);
+  border-radius:4px;
+  padding:2px 7px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--muted);
+}
+
+/* ── Divider ── */
+.divider {
+  height:0.5px; background:var(--line);
+  margin:0 32px; position:relative; z-index:1;
+}
+
+/* ── Animated capture toast ── */
+.capture-demo {
+  position:relative;
+  background:var(--bg2);
+  border:0.5px solid var(--line2);
+  border-radius:14px;
+  padding:24px;
+  margin-top:64px;
+  overflow:hidden;
+}
+
+.capture-steps {
+  display:flex; align-items:center; justify-content:center;
+  gap:0;
+  flex-wrap:wrap;
+}
+
+.cap-step {
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:0 32px;
+  position:relative;
+}
+
+.cap-step:not(:last-child)::after {
+  content:'→';
+  position:absolute; right:-4px; top:18px;
+  font-size:16px; color:var(--lime); font-weight:700;
+}
+
+.cap-icon {
+  width:44px; height:44px; border-radius:12px;
+  background:var(--bg3);
+  border:0.5px solid var(--line2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px;
+  transition:all 0.3s;
+}
+
+.cap-label {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--muted); text-align:center;
+}
+
+/* Counter badge */
+.stat-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:1px; background:var(--line);
+  border:0.5px solid var(--line); border-radius:14px;
+  overflow:hidden; margin-top:64px;
+}
+
+.stat-card {
+  background:var(--bg2); padding:32px;
+  text-align:center;
+}
+
+.stat-num {
+  font-size:48px; font-weight:800;
+  color:var(--lime); line-height:1;
+  font-family:'JetBrains Mono',monospace;
+  margin-bottom:8px;
+}
+
+.stat-label { font-size:13px; color:var(--muted); }
+
+/* ── Feed item action buttons (shown on hover in demo) ── */
+.feed-actions {
+  display:flex; align-items:center; gap:4px;
+  opacity:0; transition:opacity 0.15s;
+  flex-shrink:0;
+}
+.feed-item:hover .feed-actions { opacity:1; }
+.feed-item.demo-hover .feed-actions { opacity:1; }
+
+.feed-act {
+  width:24px; height:24px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all 0.15s; font-size:11px;
+  border:0.5px solid transparent;
+}
+.feed-act:hover { background:rgba(255,255,255,0.06); }
+.feed-act.fav:hover { border-color:rgba(251,191,36,0.3); }
+.feed-act.fav.active svg { stroke:#fbbf24; fill:#fbbf2440; }
+.feed-act.copy-act:hover { border-color:rgba(52,211,153,0.3); }
+.feed-act.del-act:hover { background:rgba(248,113,113,0.08); border-color:rgba(248,113,113,0.3); }
+.feed-act svg { width:11px; height:11px; fill:none; stroke:var(--muted); stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+.feed-act.copy-act:hover svg { stroke:var(--green); }
+.feed-act.del-act:hover svg { stroke:var(--red); }
+.feed-act.fav:hover svg { stroke:var(--amber); }
+
+.feed-item.pinned { border-color:rgba(251,191,36,0.25) !important; }
+.feed-item.pinned .feed-act.fav svg { stroke:var(--amber); fill:rgba(251,191,36,0.15); }
+
+/* Copied flash */
+.feed-item.copied-flash { background:rgba(52,211,153,0.06) !important; border-color:rgba(52,211,153,0.2) !important; }
+
+/* Delete animation */
+.feed-item.deleting {
+  animation:deleteItem 0.35s ease forwards;
+}
+@keyframes deleteItem {
+  to { opacity:0; transform:translateX(20px) scaleY(0.7); max-height:0; padding:0; margin:0; }
+}
+
+/* Undo bar */
+.ext-undo {
+  display:flex; align-items:center; gap:10px;
+  background:#1a1a0a; border-top:0.5px solid rgba(200,240,96,0.15);
+  padding:9px 14px;
+  transition:all 0.3s; max-height:0; overflow:hidden; opacity:0;
+}
+.ext-undo.show { max-height:44px; opacity:1; }
+.ext-undo-txt { font-size:12px; color:var(--muted); flex:1; font-family:'JetBrains Mono',monospace; }
+.ext-undo-prog { width:28px; height:2px; background:#2e2e2e; border-radius:1px; overflow:hidden; }
+.ext-undo-fill { height:100%; background:var(--purple); width:100%; transition:width 4s linear; }
+.ext-undo-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--purple); cursor:pointer; }
+
+/* ── Demo section ── */
+.demo-section {
+  position:relative; z-index:1;
+  padding:80px 32px;
+  max-width:1200px; margin:0 auto;
+  overflow:hidden;
+}
+
+.demo-tabs {
+  display:flex; gap:8px; margin-top:48px; margin-bottom:32px;
+  flex-wrap:wrap;
+}
+
+.demo-tab {
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px; font-weight:600;
+  padding:8px 18px; border-radius:20px;
+  border:0.5px solid var(--line2);
+  color:var(--muted); cursor:pointer;
+  transition:all 0.2s;
+}
+.demo-tab:hover { color:var(--text); border-color:var(--line2); }
+.demo-tab.active { background:var(--lime); color:#0d1a00; border-color:var(--lime); }
+
+.demo-panels { position:relative; }
+.demo-panel { display:none; animation:fadeIn 0.3s ease both; }
+.demo-panel.active { display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:start; }
+
+.demo-explain { }
+.demo-explain-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; font-weight:700; color:var(--lime);
+  letter-spacing:2px; text-transform:uppercase;
+  margin-bottom:12px;
+}
+.demo-explain-title { font-size:26px; font-weight:700; letter-spacing:-0.5px; margin-bottom:12px; line-height:1.15; font-family:"DM Serif Display",serif; }
+.demo-explain-desc { font-size:14px; color:var(--muted); line-height:1.75; margin-bottom:20px; }
+.demo-explain-steps { display:flex; flex-direction:column; gap:10px; }
+.demo-step-item { display:flex; align-items:flex-start; gap:10px; font-size:13px; color:var(--muted); }
+.demo-step-dot { width:6px; height:6px; border-radius:50%; background:var(--lime); flex-shrink:0; margin-top:6px; }
+
+.demo-visual {
+  background:var(--bg2);
+  border:0.5px solid var(--line2);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  position:relative;
+}
+.demo-visual-header {
+  padding:10px 14px;
+  border-bottom:0.5px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.demo-visual-title {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; font-weight:600; color:var(--lime);
+  display:flex; align-items:center; gap:6px;
+}
+.demo-visual-body { padding:10px 12px; display:flex; flex-direction:column; gap:4px; }
+
+.demo-item {
+  border:0.5px solid var(--line);
+  border-radius:8px; background:var(--bg3);
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; transition:all 0.3s;
+  position:relative; overflow:hidden;
+}
+.demo-item-icon { width:26px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+.demo-item-body { flex:1; min-width:0; }
+.demo-item-tag { font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:2px; }
+.demo-item-text { font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.demo-item-acts { display:flex; gap:3px; opacity:0; transition:opacity 0.15s; }
+.demo-item:hover .demo-item-acts, .demo-item.show-acts .demo-item-acts { opacity:1; }
+.d-act { width:22px; height:22px; border-radius:5px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.d-act:hover { background:rgba(255,255,255,0.06); }
+.d-act svg { width:11px; height:11px; fill:none; stroke:var(--muted); stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+
+.demo-item.fav-item { border-color:rgba(251,191,36,0.3); }
+.fav-badge { position:absolute; top:6px; right:6px; width:4px; height:4px; border-radius:50%; background:var(--amber); opacity:0; transition:opacity 0.3s; }
+.demo-item.fav-item .fav-badge { opacity:1; }
+
+.demo-undo-bar {
+  margin:6px 12px 10px;
+  background:#1a1a0a;
+  border:0.5px solid rgba(200,240,96,0.15);
+  border-radius:8px;
+  padding:8px 12px;
+  display:flex; align-items:center; gap:10px;
+  opacity:0; transform:translateY(4px);
+  transition:all 0.3s;
+}
+.demo-undo-bar.show { opacity:1; transform:translateY(0); }
+.demo-undo-txt { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); flex:1; }
+.demo-undo-prog { width:24px; height:2px; background:#2e2e2e; border-radius:1px; overflow:hidden; }
+.demo-undo-fill { height:100%; background:var(--purple); width:100%; transition:width 4s linear; }
+.demo-undo-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--purple); cursor:pointer; }
+
+@media (max-width:900px) {
+  .demo-section { padding:60px 24px; }
+  .demo-panel.active { grid-template-columns:1fr; }
+}
+
+/* ── Animated demo cursor ── */
+.demo-cursor {
+  position:absolute;
+  pointer-events:none;
+  z-index:50;
+  transition:left 0.55s cubic-bezier(0.4,0,0.2,1), top 0.55s cubic-bezier(0.4,0,0.2,1);
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  left:0; top:0;
+  opacity:0;
+  transform:none;
+}
+.demo-cursor.visible { opacity:1; }
+.demo-cursor.clicking { transform:scale(0.85); transition:transform 0.1s ease; }
+
+/* ── Who it's for rows ── */
+.who-row {
+  display:flex; align-items:flex-start; gap:28px;
+  padding:32px 36px;
+  background:var(--bg2);
+  transition:background 0.2s;
+}
+.who-row:hover { background:#1a1a1a; }
+
+.who-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; font-weight:700; color:var(--faint);
+  letter-spacing:1px; flex-shrink:0; padding-top:3px;
+  width:24px;
+}
+
+.who-emoji {
+  font-size:26px; flex-shrink:0; line-height:1; padding-top:2px;
+}
+
+.who-body { flex:1; min-width:0; }
+
+.who-role {
+  font-size:16px; font-weight:700; color:var(--text);
+  margin-bottom:8px; letter-spacing:-0.2px;
+}
+
+.who-desc {
+  font-size:13px; color:var(--muted); line-height:1.75;
+}
+
+.who-tags {
+  display:flex; flex-direction:column; gap:6px;
+  flex-shrink:0; align-items:flex-end; padding-top:4px;
+}
+
+.who-tag {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; font-weight:600;
+  padding:3px 10px; border-radius:20px;
+  border:0.5px solid; white-space:nowrap;
+}
+
+@media (max-width:700px) {
+  .who-row { flex-direction:column; gap:16px; padding:24px 20px; }
+  .who-tags { flex-direction:row; flex-wrap:wrap; align-items:flex-start; }
+}
+
+/* ── Nav scroll state ── */
+nav.scrolled {
+  background:rgba(13,13,13,0.98);
+  box-shadow:0 0 0 0.5px var(--line), 0 4px 32px rgba(0,0,0,0.4);
+}
+
+/* ── 3-step process strip ── */
+.process-strip {
+  position:relative; z-index:1;
+  max-width:900px; margin:0 auto;
+  padding:56px 32px 40px;
+  display:grid;
+  grid-template-columns:1fr 48px 1fr 48px 1fr;
+  align-items:center;
+}
+.process-step {
+  text-align:center;
+  padding:28px 20px;
+  border:0.5px solid var(--line);
+  border-radius:14px;
+  background:var(--bg2);
+  transition:border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+}
+.process-step:hover {
+  border-color:rgba(200,240,96,0.25);
+  transform:translateY(-5px);
+  box-shadow:0 12px 40px rgba(0,0,0,0.35);
+}
+.process-step-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; font-weight:700;
+  color:var(--lime); letter-spacing:2px;
+  text-transform:uppercase; margin-bottom:10px;
+}
+.process-step-icon { font-size:28px; display:block; margin-bottom:10px; }
+.process-step-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:5px; }
+.process-step-desc { font-size:12px; color:var(--muted); line-height:1.55; }
+.process-arrow {
+  text-align:center;
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px; font-weight:700;
+  color:var(--lime); opacity:0.5;
+}
+
+/* ── Stagger reveal for children ── */
+.reveal-stagger > * {
+  opacity:0; transform:translateY(18px);
+  transition:opacity 0.55s cubic-bezier(0.16,1,0.3,1),
+             transform 0.55s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal-stagger.visible > *:nth-child(1) { opacity:1; transform:none; transition-delay:0s; }
+.reveal-stagger.visible > *:nth-child(2) { opacity:1; transform:none; transition-delay:0.06s; }
+.reveal-stagger.visible > *:nth-child(3) { opacity:1; transform:none; transition-delay:0.12s; }
+.reveal-stagger.visible > *:nth-child(4) { opacity:1; transform:none; transition-delay:0.18s; }
+.reveal-stagger.visible > *:nth-child(5) { opacity:1; transform:none; transition-delay:0.24s; }
+
+/* ── feat-card hover lift ── */
+.feat-card { transition:background 0.2s, transform 0.22s, box-shadow 0.22s; }
+.feat-card:hover { transform:translateY(-3px); box-shadow:0 12px 36px rgba(0,0,0,0.3); }
+
+@media (max-width:700px) {
+  .process-strip { grid-template-columns:1fr; gap:12px; padding:40px 24px; }
+  .process-arrow { display:none; }
+}
+
+/* ── Feature showcase (replaces tabbed demo) ── */
+.fshow-section { padding:100px 32px; max-width:1100px; margin:0 auto; }
+
+.fshow-row {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:64px;
+  align-items:center;
+  padding:64px 0;
+  border-bottom:0.5px solid var(--line);
+}
+.fshow-row:last-child { border-bottom:none; }
+.fshow-row.flip { direction:rtl; }
+.fshow-row.flip > * { direction:ltr; }
+
+.fshow-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; font-weight:600;
+  color:var(--lime);
+  margin-bottom:12px;
+  letter-spacing:0.08em;
+}
+
+.fshow-title {
+  font-family:'DM Serif Display',serif;
+  font-size:clamp(22px,2.8vw,32px);
+  line-height:1.2;
+  color:var(--text);
+  margin-bottom:14px;
+}
+
+.fshow-desc {
+  font-size:15px; color:var(--muted);
+  line-height:1.75;
+  margin-bottom:20px;
+}
+
+.fshow-steps {
+  display:flex; flex-direction:column; gap:8px;
+}
+.fshow-step {
+  display:flex; align-items:flex-start; gap:10px;
+  font-size:13px; color:var(--muted); line-height:1.5;
+}
+.fshow-step-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--lime); flex-shrink:0;
+  margin-top:6px;
+}
+
+.fshow-media {
+  position:relative;
+}
+
+.fshow-img {
+  width:100%; height:100%;
+  object-fit:cover; object-position:top;
+  display:block;
+  border-radius:14px;
+}
+
+.fshow-placeholder {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:12px; padding:32px;
+  text-align:center;
+  width:100%; height:100%;
+}
+.fshow-placeholder-icon { font-size:32px; opacity:0.4; }
+.fshow-placeholder-label {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--faint);
+  line-height:1.6;
+}
+.fshow-placeholder-file {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--lime);
+  opacity:0.6;
+  background:var(--bg3); border:0.5px solid var(--line2);
+  border-radius:6px; padding:4px 10px;
+}
+
+@media (max-width:900px) {
+  .fshow-row { grid-template-columns:1fr; gap:32px; }
+  .fshow-row.flip { direction:ltr; }
+  .fshow-section { padding:60px 24px; }
+}
+
+/* ── Hero flow visual ── */
+.hero-flow-visual {
+  display:flex; flex-direction:column; gap:0;
+  width:100%; max-width:400px;
+  animation:fadeUp 0.8s ease 0.5s both;
+}
+
+.hfv-card {
+  background:var(--bg2);
+  border:0.5px solid var(--line2);
+  border-radius:14px;
+  padding:20px 22px;
+  display:flex; align-items:flex-start; gap:16px;
+  transition:border-color 0.2s;
+}
+.hfv-card:hover { border-color:rgba(255,255,255,0.2); }
+
+.hfv-card-highlight {
+  border-color:var(--lime-glow);
+  background:rgba(200,240,96,0.04);
+  box-shadow:0 0 40px rgba(200,240,96,0.07);
+}
+
+.hfv-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; font-weight:600;
+  color:var(--faint);
+  min-width:20px;
+  padding-top:2px;
+}
+.hfv-card-highlight .hfv-num { color:var(--lime); }
+
+.hfv-icon { font-size:26px; line-height:1; flex-shrink:0; }
+
+.hfv-body { flex:1; }
+
+.hfv-title {
+  font-size:15px; font-weight:600;
+  color:var(--text);
+  margin-bottom:4px;
+  line-height:1.3;
+}
+.hfv-card-highlight .hfv-title { color:var(--lime); }
+
+.hfv-desc {
+  font-size:13px; color:var(--muted);
+  line-height:1.6;
+}
+
+.hfv-connector {
+  display:flex; align-items:center; justify-content:flex-start;
+  padding:0 0 0 54px;
+  height:24px;
+}
+.hfv-connector-line {
+  width:1.5px; height:24px;
+  background:linear-gradient(to bottom, var(--line2), var(--line));
+}
+
+@media (max-width:900px) {
+  .hero-flow-visual { max-width:100%; }
+}
+
+/* ── Hero animated mockup ── */
+.hero-mockup {
+  position:relative;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+}
+.hm-panel {
+  width:100%; max-width:340px;
+  background:var(--bg2);
+  border:0.5px solid var(--line2);
+  border-radius:16px;
+  overflow:visible;
+  box-shadow:0 24px 80px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(255,255,255,0.04);
+  position:relative;
+}
+.hm-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:11px 14px 10px;
+  border-bottom:0.5px solid var(--line);
+  border-radius:16px 16px 0 0;
+  background:var(--bg3);
+}
+.hm-head-left {
+  display:flex; align-items:center; gap:7px;
+  font-size:13px; font-weight:700; color:var(--text);
+}
+.hm-head-icon {
+  width:22px; height:22px;
+  background:var(--lime); border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px;
+}
+.hm-status {
+  display:flex; align-items:center; gap:5px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--lime); letter-spacing:0.3px;
+}
+.hm-status-dot {
+  width:6px; height:6px;
+  background:var(--lime); border-radius:50%;
+  animation:hmPulse 1.6s ease-in-out infinite;
+}
+@keyframes hmPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.hm-ws {
+  display:flex; align-items:center; gap:7px;
+  padding:8px 14px;
+  border-bottom:0.5px solid var(--line);
+}
+.hm-ws-name {
+  font-family:'DM Serif Display',serif;
+  font-style:italic; font-size:13px; color:var(--text); flex:1;
+}
+.hm-ws-label {
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px; color:var(--faint); letter-spacing:0.5px;
+}
+.hm-tabs {
+  display:flex; align-items:flex-end; gap:2px;
+  padding:6px 14px 0;
+  overflow:hidden;
+}
+.hm-tab {
+  font-family:'JetBrains Mono',monospace;
+  font-size:9.5px; font-weight:500; color:var(--faint);
+  padding:4px 9px; border-radius:5px 5px 0 0;
+  border:0.5px solid transparent; border-bottom:none;
+  white-space:nowrap; background:transparent;
+  transition:color 0.15s, background 0.15s;
+}
+.hm-tab[data-tab] { cursor:pointer; }
+.hm-tab[data-tab]:hover:not(.active) { color:var(--muted); background:rgba(255,255,255,0.04); }
+.hm-tab.active { color:var(--text); background:var(--bg2); border-color:var(--line2); }
+.hm-tab-add { font-size:13px; color:var(--faint); padding:2px 5px; line-height:1; }
+.hm-item-type.t-text { color:#fbbf24; }
+.hm-item-icon.t-text { background:rgba(251,191,36,0.12); }
+.hm-thumb { width:20px; height:15px; border-radius:3px;
+  background:linear-gradient(135deg,#34d399 0%,#60a5fa 60%,#a78bfa 100%); opacity:0.75; }
+.hm-filters {
+  display:flex; gap:4px; padding:8px 14px;
+  border-bottom:0.5px solid var(--line);
+}
+.hm-pill {
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px; font-weight:600; letter-spacing:0.3px;
+  padding:3px 8px; border-radius:20px;
+  border:0.5px solid var(--line2); color:var(--faint);
+  white-space:nowrap;
+}
+.hm-pill.active {
+  background:var(--lime-dim);
+  border-color:rgba(200,240,96,0.3);
+  color:var(--lime);
+}
+.hm-items-wrap {
+  min-height:168px;
+  padding:6px 8px 6px;
+  display:flex; flex-direction:column; gap:3px;
+}
+.hm-item {
+  display:flex; align-items:center; gap:8px;
+  padding:7px 8px; border-radius:8px;
+  border:0.5px solid transparent;
+  opacity:0; transform:translateY(5px);
+  transition:opacity 0.25s, transform 0.25s, background 0.2s, border-color 0.2s;
+}
+.hm-item.visible { opacity:1; transform:translateY(0); }
+.hm-item.selected { background:rgba(200,240,96,0.06); border-color:rgba(200,240,96,0.18); }
+.hm-circ {
+  width:15px; height:15px; border:1.5px solid var(--line2); border-radius:4px;
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity 0.2s, background 0.15s, border-color 0.15s;
+}
+.hm-circ.show { opacity:1; }
+.hm-circ.checked { background:var(--lime); border-color:var(--lime); }
+.hm-circ.checked::after {
+  content:''; width:7px; height:5px;
+  border-left:1.5px solid #0d1a00; border-bottom:1.5px solid #0d1a00;
+  transform:rotate(-45deg) translate(1px,-1px); display:block;
+}
+.hm-item-icon {
+  width:28px; height:28px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; flex-shrink:0;
+}
+.hm-item-icon.t-link { background:rgba(96,165,250,0.14); }
+.hm-item-icon.t-code { background:rgba(167,139,250,0.14);
+  font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700;
+  color:#a78bfa; letter-spacing:-0.5px; }
+.hm-item-icon.t-image { background:linear-gradient(135deg,rgba(52,211,153,0.25),rgba(96,165,250,0.15)); }
+.hm-item-body { flex:1; min-width:0; }
+.hm-item-type {
+  font-family:'JetBrains Mono',monospace;
+  font-size:8px; font-weight:700; letter-spacing:0.9px;
+  text-transform:uppercase; margin-bottom:2px;
+}
+.hm-item-type.t-link { color:#60a5fa; }
+.hm-item-type.t-code { color:#a78bfa; }
+.hm-item-type.t-image { color:#34d399; }
+.hm-item-text { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hm-bar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 10px; border-top:0.5px solid var(--line);
+  background:var(--bg3); border-radius:0 0 16px 16px;
+  opacity:0; transform:translateY(3px);
+  transition:opacity 0.3s, transform 0.3s;
+}
+.hm-bar.visible { opacity:1; transform:translateY(0); }
+.hm-bar-count { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); }
+.hm-bar-btn {
+  display:flex; align-items:center; gap:5px;
+  background:var(--lime); color:#0d1a00;
+  font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+  padding:5px 10px; border-radius:6px;
+  transition:background 0.15s, box-shadow 0.15s;
+}
+.hm-bar-btn.sending { background:#d8ff70; box-shadow:0 4px 16px rgba(200,240,96,0.45); }
+/* Toast */
+.hm-toast {
+  position:absolute; top:8px; right:-8px;
+  display:flex; align-items:center; gap:6px;
+  background:var(--bg3); border:0.5px solid rgba(200,240,96,0.3);
+  border-radius:8px; padding:7px 11px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; font-weight:600; color:var(--lime);
+  white-space:nowrap;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  opacity:0; transform:translateX(6px);
+  transition:opacity 0.22s, transform 0.22s;
+  pointer-events:none; z-index:10;
+}
+.hm-toast.show { opacity:1; transform:translateX(0); }
+.hm-toast-dot { width:5px; height:5px; background:var(--lime); border-radius:50%; flex-shrink:0; }
+@media(max-width:900px){ .hero-mockup{ display:none; } }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <a href="#" class="nav-logo">
+    <img src="logo-icon.png" alt="CacheTray icon" class="nav-logo-icon-img"/>
+    <span class="nav-logo-text">CacheTray</span>
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#features">All features</a>
+    <a href="#types">What it saves</a>
+    <a href="#who">Who it's for</a>
+    <a href="privacy.html">Privacy</a>
+    <a href="received.html">Phone inbox</a>
+    <a href="blog/">Blog</a>
+  </div>
+  <div class="nav-cta">
+    <a href="https://chromewebstore.google.com/detail/cachetray/pgohpbolcaaoenhaapkikmheckannlpn" class="btn-primary" target="_blank" rel="noopener">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Add to Chrome — Free
+    </a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-orb"></div>
+
+  <!-- Toast notification demo -->
+  <div class="hero-inner">
+
+    <div class="hero-content" style="text-align:left;">
+      <div class="hero-badge">
+        <div class="hero-badge-dot"></div>
+        Free Chrome Extension · Local by Default · No Account Required
+      </div>
+
+      <h1 class="hero-title">
+        Save screenshots,<br>links &amp; code.
+        <span class="hero-title-line2">Send to ChatGPT<br>or Claude.</span>
+      </h1>
+
+      <p class="hero-sub">
+        CacheTray saves everything you copy while you browse — screenshots, links, code snippets, text. Select what you need and send it straight to <strong style="color:var(--text);">Claude or ChatGPT</strong> in one click. No file picker. No manual upload. No hunting through folders.
+      </p>
+
+      <div class="hero-cta">
+        <a href="https://chromewebstore.google.com/detail/cachetray/pgohpbolcaaoenhaapkikmheckannlpn" class="btn-primary" style="font-size:15px;padding:14px 28px;" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Add to Chrome — Free
+        </a>
+        <a href="https://www.producthunt.com/products/cachetray-clipboard-for-ai-workflows?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-cachetray" target="_blank" rel="noopener noreferrer">
+          <img alt="CacheTray on Product Hunt" width="190" height="48" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1143737&theme=dark&t=1778519306304" style="display:block;"/>
+        </a>
+      </div>
+
+      <div class="hero-meta">
+        <div class="hero-meta-item">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Works with Claude & ChatGPT
+        </div>
+        <div class="hero-meta-item">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Opens as a side panel
+        </div>
+        <div class="hero-meta-item">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          CacheTray never uploads to our servers
+        </div>
+      </div>
+    </div>
+
+    <!-- Animated UI mockup -->
+    <div class="hero-mockup">
+
+      <!-- Floating toast notification -->
+      <div class="hm-toast" id="hm-toast">
+        <div class="hm-toast-dot"></div>
+        <span id="hm-toast-text">LINK saved</span>
+      </div>
+
+      <div class="hm-panel">
+
+        <!-- Header -->
+        <div class="hm-head">
+          <div class="hm-head-left">
+            <div class="hm-head-icon"><img src="logo-icon.png" alt="" style="width:100%;height:100%;border-radius:4px;display:block;object-fit:cover;"/></div>
+            CacheTray
+          </div>
+          <div class="hm-status">
+            <div class="hm-status-dot"></div>
+            capturing
+          </div>
+        </div>
+
+        <!-- Workspace -->
+        <div class="hm-ws">
+          <span style="font-size:11px;">📁</span>
+          <span class="hm-ws-name">prompt kit</span>
+          <span class="hm-ws-label">WORKSPACE</span>
+        </div>
+
+        <!-- Tabs -->
+        <div class="hm-tabs">
+          <div class="hm-tab active" data-tab="pk">prompt kit</div>
+          <div class="hm-tab" data-tab="claude">claude</div>
+          <div class="hm-tab" data-tab="research">research</div>
+          <div class="hm-tab-add">+</div>
+        </div>
+
+        <!-- Filter pills -->
+        <div class="hm-filters">
+          <div class="hm-pill active">all <span id="hm-count">0</span></div>
+          <div class="hm-pill">links</div>
+          <div class="hm-pill">code</div>
+          <div class="hm-pill">images</div>
+          <div class="hm-pill">text</div>
+        </div>
+
+        <!-- Items list — populated by JS -->
+        <div class="hm-items-wrap" id="hm-items"></div>
+
+        <!-- Action bar (slides up when items selected) -->
+        <div class="hm-bar" id="hm-bar">
+          <div class="hm-bar-count" id="hm-bar-count">0 items selected</div>
+          <div class="hm-bar-btn" id="hm-bar-btn">Send to Claude →</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Who is it for -->
+<section id="who" style="padding:100px 32px;max-width:1100px;margin:0 auto;">
+  <div class="reveal">
+    <div class="section-label">Who it's for</div>
+    <h2 class="section-title">Anyone who uses<br><span style="color:var(--lime);">AI while browsing.</span></h2>
+    <p class="section-sub" style="margin-top:12px;">If you regularly copy things from the web to send to an AI chat, CacheTray saves you the repetitive steps.</p>
+  </div>
+
+  <!-- 4 user type rows — each is a horizontal card with big number + role + description -->
+  <div style="display:flex;flex-direction:column;gap:0;margin-top:64px;border:0.5px solid var(--line);border-radius:16px;overflow:hidden;" class="reveal">
+
+    <div class="who-row">
+      <div class="who-num">01</div>
+      <div class="who-emoji">👨‍💻</div>
+      <div class="who-body">
+        <div class="who-role">Developers who use AI for debugging</div>
+        <div class="who-desc">Copy the error message, grab a screenshot of the broken UI, save the relevant code snippet — then send all of it to Claude or ChatGPT together when asking for help.</div>
+      </div>
+      <div class="who-tags">
+        <span class="who-tag" style="color:var(--purple);border-color:rgba(167,139,250,0.2);">⌨️ code snippets</span>
+        <span class="who-tag" style="color:var(--blue);border-color:rgba(96,165,250,0.2);">🔗 docs links</span>
+        <span class="who-tag" style="color:var(--muted);border-color:var(--line2);">📝 error logs</span>
+      </div>
+    </div>
+
+    <div class="who-row" style="border-top:0.5px solid var(--line);">
+      <div class="who-num">02</div>
+      <div class="who-emoji">🔬</div>
+      <div class="who-body">
+        <div class="who-role">Researchers &amp; students</div>
+        <div class="who-desc">While reading across multiple tabs, save quotes, charts, and source links as you go. Then move what you need into NotebookLM or an AI chat without hunting back through all those tabs.</div>
+      </div>
+      <div class="who-tags">
+        <span class="who-tag" style="color:var(--blue);border-color:rgba(96,165,250,0.2);">🔗 source links</span>
+        <span class="who-tag" style="color:var(--amber);border-color:rgba(251,191,36,0.2);">🖼️ charts</span>
+        <span class="who-tag" style="color:var(--muted);border-color:var(--line2);">📝 quotes</span>
+      </div>
+    </div>
+
+    <div class="who-row" style="border-top:0.5px solid var(--line);">
+      <div class="who-num">03</div>
+      <div class="who-emoji">🎨</div>
+      <div class="who-body">
+        <div class="who-role">Designers giving AI visual context</div>
+        <div class="who-desc">Save screenshots of UI states, save Figma links, save reference images — then send them all at once to Claude or ChatGPT when asking for feedback or copy suggestions.</div>
+      </div>
+      <div class="who-tags">
+        <span class="who-tag" style="color:var(--amber);border-color:rgba(251,191,36,0.2);">🖼️ UI screenshots</span>
+        <span class="who-tag" style="color:var(--blue);border-color:rgba(96,165,250,0.2);">🔗 Figma links</span>
+        <span class="who-tag" style="color:var(--lime);border-color:rgba(200,240,96,0.2);">📝 feedback notes</span>
+      </div>
+    </div>
+
+    <div class="who-row" style="border-top:0.5px solid var(--line);">
+      <div class="who-num">04</div>
+      <div class="who-emoji">💼</div>
+      <div class="who-body">
+        <div class="who-role">Anyone juggling multiple tasks or clients</div>
+        <div class="who-desc">Keep each task or client in its own workspace. Save screenshots, notes, and links as you go, then have everything ready when you need to ask AI for a draft or summary.</div>
+      </div>
+      <div class="who-tags">
+        <span class="who-tag" style="color:var(--red);border-color:rgba(248,113,113,0.2);">✅ task lists</span>
+        <span class="who-tag" style="color:var(--blue);border-color:rgba(96,165,250,0.2);">🗂️ workspaces</span>
+        <span class="who-tag" style="color:var(--green);border-color:rgba(52,211,153,0.2);">📤 quick sharing</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom full-width "anyone" callout -->
+  <div style="margin-top:24px;background:var(--lime-dim);border:0.5px solid var(--lime-glow);border-radius:14px;padding:32px 40px;display:flex;align-items:center;gap:32px;flex-wrap:wrap;" class="reveal">
+    <div style="font-size:36px;flex-shrink:0;">🌐</div>
+    <div style="flex:1;min-width:240px;">
+      <div style="font-size:16px;font-weight:700;color:var(--lime);margin-bottom:8px;">In short</div>
+      <div style="font-size:15px;color:var(--muted);line-height:1.75;">Stop saving files just to upload them. Copy things normally, find them in one place, and send them to AI in one click.</div>
+    </div>
+    <a href="https://chromewebstore.google.com/detail/cachetray/pgohpbolcaaoenhaapkikmheckannlpn" class="btn-primary" style="flex-shrink:0;" target="_blank" rel="noopener">Add to Chrome — Free</a>
+  </div>
+
+</section>
+
+<div class="divider"></div>
+
+<!-- Feature Showcase Section -->
+<section id="walkthrough">
+<div class="fshow-section">
+  <div class="reveal" style="text-align:center;margin-bottom:0;">
+    <div class="section-label" style="justify-content:center;display:flex;">Core features</div>
+    <h2 class="section-title">Four things<br><span style="color:var(--lime);">CacheTray does well.</span></h2>
+    <p class="section-sub" style="margin-top:12px;margin-bottom:0;">Each one removes a specific friction point in AI workflows.</p>
+  </div>
+
+  <div class="demo-panels" style="display:none;">
+    <!-- panels 0-4 moved to fshow-rows above; keeping stubs so setDemoTab index logic works -->
+    <div class="demo-panel active" id="dPanel0"></div>
+    <div class="demo-panel" id="dPanel1"></div>
+    <div class="demo-panel" id="dPanel2"></div>
+    <div class="demo-panel" id="dPanel3"></div>
+    <div class="demo-panel" id="dPanel4"></div>
+
+    <!-- ── Panel 5: Bulk select & share ── -->
+    <div class="demo-panel" id="dPanel5">
+      <div class="demo-explain">
+        <div class="demo-explain-num">Feature 06</div>
+        <div class="demo-explain-title">Select multiple items<br>and act on them together.</div>
+        <div class="demo-explain-desc">Click the circle on the left of any item to select it. Select as many as you want. An action bar appears — Send to AI, Share, Download, or Delete them all at once.</div>
+        <div class="demo-explain-steps">
+          <div class="demo-step-item"><div class="demo-step-dot"></div>Click the circle on the left side of any item to select it</div>
+          <div class="demo-step-item"><div class="demo-step-dot"></div>Select as many items as you want (any type)</div>
+          <div class="demo-step-item"><div class="demo-step-dot"></div>An action bar slides up with: Send to AI, Share, Download, Delete</div>
+          <div class="demo-step-item"><div class="demo-step-dot"></div>"Send to Claude" / "Send to ChatGPT" puts items in the AI chat; Download saves files</div>
+        </div>
+      </div>
+      <div class="demo-visual" id="bulkVisual">
+        <div class="demo-visual-header">
+          <div class="demo-visual-title"><img src="logo-icon.png" alt="" style="width:16px;height:16px;border-radius:3px;vertical-align:middle;margin-right:5px;"/>CacheTray</div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--lime);" id="bulkSelCount"></span>
+        </div>
+        <div class="demo-visual-body" id="bulk5Body">
+          <!-- Item 1 -->
+          <div class="demo-item" style="border-left:3px solid #fbbf24;position:relative;" id="bulkItem1">
+            <div id="bulkCircle1" style="width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;"></div>
+            <div class="demo-item-icon" style="background:rgba(251,191,36,0.15)">🖼️</div>
+            <div class="demo-item-body">
+              <div class="demo-item-tag" style="color:#fbbf24">IMAGE</div>
+              <div class="demo-item-text">screenshot-2024.png · 342 KB</div>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">2m ago</span>
+          </div>
+          <!-- Item 2 -->
+          <div class="demo-item" style="border-left:3px solid #fbbf24;position:relative;" id="bulkItem2">
+            <div id="bulkCircle2" style="width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;"></div>
+            <div class="demo-item-icon" style="background:rgba(251,191,36,0.15)">🖼️</div>
+            <div class="demo-item-body">
+              <div class="demo-item-tag" style="color:#fbbf24">IMAGE</div>
+              <div class="demo-item-text">chatgpt.com · 2:32 AM</div>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">5m ago</span>
+          </div>
+          <!-- Item 3 -->
+          <div class="demo-item" style="border-left:3px solid #60a5fa;position:relative;" id="bulkItem3">
+            <div id="bulkCircle3" style="width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;"></div>
+            <div class="demo-item-icon" style="background:rgba(96,165,250,0.15)">🔗</div>
+            <div class="demo-item-body">
+              <div class="demo-item-tag" style="color:#60a5fa">LINK</div>
+              <div class="demo-item-text">figma.com/file/xyz/design</div>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">8m ago</span>
+          </div>
+        </div>
+        <!-- Action bar -->
+        <div id="bulkActionBar" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:0.5px solid var(--line);background:rgba(13,13,13,0.95);transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);opacity:0;">
+          <span id="bulkCountLabel" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">0 selected</span>
+          <div id="bulkShareBtn" style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:6px 14px;border-radius:20px;background:var(--lime);color:#0d1a00;cursor:pointer;transition:all 0.15s;">Share</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:6px 14px;border-radius:20px;border:0.5px solid var(--line2);color:var(--muted);cursor:pointer;">Download</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:6px 14px;border-radius:20px;border:0.5px solid rgba(248,113,113,0.3);color:var(--red);cursor:pointer;">Delete</div>
+        </div>
+        <!-- Share sheet overlay -->
+        <div id="bulkShareSheet" style="position:absolute;bottom:0;left:0;right:0;background:rgba(22,22,22,0.97);border-top:0.5px solid var(--line2);border-radius:0 0 14px 14px;padding:16px 16px 14px;transform:translateY(100%);transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);z-index:10;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:0.5px solid var(--line);">
+            <div style="width:40px;height:40px;background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">🖼️</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text);">2 Images</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);">2 MB</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:0.5px solid var(--line);">
+              <div style="width:28px;height:28px;background:rgba(0,122,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">📡</div>
+              <span style="font-size:13px;color:var(--text);">AirDrop</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:0.5px solid var(--line);">
+              <div style="width:28px;height:28px;background:rgba(52,211,153,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">💬</div>
+              <span style="font-size:13px;color:var(--text);">Messages</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:0.5px solid var(--line);">
+              <div style="width:28px;height:28px;background:rgba(37,211,102,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">📱</div>
+              <span style="font-size:13px;color:var(--text);">Telegram</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 0;">
+              <div style="width:28px;height:28px;background:rgba(167,139,250,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">📤</div>
+              <span style="font-size:13px;color:var(--text);">WhatsApp</span>
+            </div>
+          </div>
+        </div>
+        <div class="demo-cursor" id="bulk5Cursor">
+          <svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M0 0L0 18L4.5 13.5L7 20L9 19L6.5 12.5H12L0 0Z" fill="white" stroke="#000" stroke-width="1"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Panel 6: Insert into AI chats ── -->
+    <div class="demo-panel" id="dPanel6">
+      <div class="demo-explain">
+        <div class="demo-explain-num">Feature 07</div>
+        <div class="demo-explain-title">Send selected items<br>into Claude or ChatGPT.</div>
+        <div class="demo-explain-desc">Keep CacheTray open as a side panel beside Claude or ChatGPT. Select the items you want, click "Send to Claude" or "Send to ChatGPT", and they appear directly in the AI chat input. No downloading or uploading files.</div>
+        <div class="demo-explain-steps">
+          <div class="demo-step-item"><div class="demo-step-dot"></div>Open CacheTray as a side panel beside your AI chat</div>
+          <div class="demo-step-item"><div class="demo-step-dot"></div>Tick the circles on the items you want to include</div>
+          <div class="demo-step-item"><div class="demo-step-dot"></div>Click "Send to Claude" or "Send to ChatGPT" — items go straight into the chat input</div>
+          <div class="demo-step-item"><div class="demo-step-dot"></div>Works with Claude, ChatGPT, NotebookLM, and more</div>
+        </div>
+      </div>
+      <div class="demo-visual" id="ins6Visual" style="overflow:hidden;">
+        <!-- CacheTray section -->
+        <div id="ins6CacheTray">
+          <div class="demo-visual-header">
+            <div class="demo-visual-title"><img src="logo-icon.png" alt="" style="width:16px;height:16px;border-radius:3px;vertical-align:middle;margin-right:5px;"/>CacheTray</div>
+            <span id="ins6SelHeader" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--lime);opacity:0;transition:opacity 0.3s;"></span>
+          </div>
+          <div style="padding:8px 12px 4px;display:flex;flex-direction:column;gap:4px;">
+            <!-- Item 1 -->
+            <div class="demo-item" id="ins6Item1" style="border-left:3px solid #fbbf24;padding:7px 10px;transition:all 0.25s;">
+              <div id="ins6Circ1" style="width:15px;height:15px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;"></div>
+              <div class="demo-item-icon" style="background:rgba(251,191,36,0.15);width:28px;height:28px;">🖼️</div>
+              <div class="demo-item-body"><div class="demo-item-tag" style="color:#fbbf24">IMAGE</div><div class="demo-item-text">UI Error State.png · 234 KB</div></div>
+            </div>
+            <!-- Item 2 -->
+            <div class="demo-item" id="ins6Item2" style="border-left:3px solid #fbbf24;padding:7px 10px;transition:all 0.25s;">
+              <div id="ins6Circ2" style="width:15px;height:15px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;"></div>
+              <div class="demo-item-icon" style="background:rgba(251,191,36,0.15);width:28px;height:28px;">🖼️</div>
+              <div class="demo-item-body"><div class="demo-item-tag" style="color:#fbbf24">IMAGE</div><div class="demo-item-text">Product Photos.jpg · 1.8 MB</div></div>
+            </div>
+            <!-- Item 3 (won't be selected) -->
+            <div class="demo-item" id="ins6Item3" style="border-left:3px solid #fbbf24;padding:7px 10px;opacity:0.35;">
+              <div style="width:15px;height:15px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.15);flex-shrink:0;"></div>
+              <div class="demo-item-icon" style="background:rgba(251,191,36,0.15);width:28px;height:28px;">🖼️</div>
+              <div class="demo-item-body"><div class="demo-item-tag" style="color:#fbbf24">IMAGE</div><div class="demo-item-text">Focus Tip Card.png · 345 KB</div></div>
+            </div>
+          </div>
+          <!-- Action bar -->
+          <div id="ins6ActionBar" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:0.5px solid var(--line);background:rgba(13,13,13,0.95);max-height:0;overflow:hidden;opacity:0;transition:max-height 0.35s cubic-bezier(0.4,0,0.2,1),opacity 0.25s;">
+            <span id="ins6CountLbl" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);flex:1;">0 selected</span>
+            <div id="ins6InsertBtn" style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:5px 14px;border-radius:20px;background:var(--lime);color:#0d1a00;cursor:pointer;transition:background 0.15s;">Send to AI</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:5px 12px;border-radius:20px;border:0.5px solid var(--line2);color:var(--muted);">Share</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:5px 12px;border-radius:20px;border:0.5px solid rgba(248,113,113,0.3);color:var(--red);">Delete</div>
+          </div>
+        </div>
+        <!-- Arrow separator -->
+        <div id="ins6Arrow" style="display:flex;align-items:center;gap:0;padding:6px 16px;opacity:0;transition:opacity 0.4s;">
+          <div style="flex:1;height:1px;background:var(--line);"></div>
+          <div style="font-size:14px;padding:0 10px;color:var(--lime);">↓ sent to</div>
+          <div style="flex:1;height:1px;background:var(--line);"></div>
+        </div>
+        <!-- Target: AI chat -->
+        <div id="ins6Target" style="margin:0 12px 12px;border-radius:10px;border:0.5px solid var(--line2);background:var(--bg3);overflow:hidden;opacity:0;transition:opacity 0.45s;">
+          <div style="padding:7px 12px;border-bottom:0.5px solid var(--line);display:flex;align-items:center;gap:7px;">
+            <div style="width:18px;height:18px;background:rgba(16,163,127,0.2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;">✨</div>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">Claude / ChatGPT</span>
+            <span id="ins6InsertedLabel" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--lime);margin-left:auto;opacity:0;transition:opacity 0.35s;"></span>
+          </div>
+          <div style="padding:8px 12px;display:flex;gap:7px;align-items:flex-start;min-height:64px;">
+            <div id="ins6Img1" style="width:50px;height:50px;background:rgba(248,113,113,0.12);border-radius:7px;border:0.5px solid rgba(248,113,113,0.3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;opacity:0;transform:scale(0.7) translateY(6px);transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);">📊</div>
+            <div id="ins6Img2" style="width:50px;height:50px;background:rgba(96,165,250,0.12);border-radius:7px;border:0.5px solid rgba(96,165,250,0.3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;opacity:0;transform:scale(0.7) translateY(6px);transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);">🐕</div>
+            <span id="ins6ChatPlaceholder" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);padding-top:4px;opacity:1;transition:opacity 0.3s;">Add context to your prompt...</span>
+          </div>
+        </div>
+        <div class="demo-cursor" id="ins6Cursor">
+          <svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M0 0L0 18L4.5 13.5L7 20L9 19L6.5 12.5H12L0 0Z" fill="white" stroke="#000" stroke-width="1"/></svg>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /demo-panels (hidden, kept for JS compat) -->
+
+  <!-- Feature 01 -->
+  <div class="fshow-row reveal" data-anim-idx="0">
+    <div class="fshow-text">
+      <div class="fshow-num">01 — Auto-capture</div>
+      <div class="fshow-title">Everything you copy is saved automatically.</div>
+      <p class="fshow-desc">Copy anything in Chrome — a link, a code snippet, a screenshot — and CacheTray saves it instantly in the background. No extra clicks, no saving to your desktop.</p>
+      <div class="fshow-steps">
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Press Ctrl+C on any text, link, code, or screenshot</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>A small notification confirms it was saved</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Open the side panel with Ctrl+Shift+Y</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Your item is there, sorted by type, ready to use</div>
+      </div>
+    </div>
+    <div class="fshow-media">
+      <div class="demo-visual" style="overflow:visible;">
+        <div class="demo-visual-header">
+          <div class="demo-visual-title"><img src="logo-icon.png" alt="" style="width:16px;height:16px;border-radius:3px;vertical-align:middle;margin-right:5px;"/>CacheTray <span style="color:var(--faint);font-weight:400;">· prompt kit</span></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">Ctrl+Shift+Y</span>
+        </div>
+        <div class="demo-visual-body" id="cap0Body">
+          <div class="demo-item" style="border-left:3px solid #60a5fa;">
+            <div class="demo-item-icon" style="background:rgba(96,165,250,0.15)">🔗</div>
+            <div class="demo-item-body"><div class="demo-item-tag" style="color:#60a5fa">LINK</div><div class="demo-item-text">github.com/vercel/next.js</div></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">2m ago</span>
+          </div>
+          <div class="demo-item" style="border-left:3px solid #a78bfa;">
+            <div class="demo-item-icon" style="background:rgba(167,139,250,0.15)">⌨️</div>
+            <div class="demo-item-body"><div class="demo-item-tag" style="color:#a78bfa">CODE</div><div class="demo-item-text">const data = await res.json()</div></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">5m ago</span>
+          </div>
+        </div>
+        <div id="cap0Toast" style="margin:0 12px 12px;background:rgba(200,240,96,0.07);border:0.5px solid rgba(200,240,96,0.2);border-radius:8px;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--lime);display:flex;align-items:center;gap:8px;opacity:0;transition:opacity 0.4s;">
+          <img src="logo-icon.png" alt="" style="width:14px;height:14px;border-radius:3px;flex-shrink:0;"/><span id="cap0ToastTxt">🔗 Link captured</span>
+        </div>
+        <div class="demo-cursor" id="cap0Cursor">
+          <svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M0 0L0 18L4.5 13.5L7 20L9 19L6.5 12.5H12L0 0Z" fill="white" stroke="#000" stroke-width="1"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 02 -->
+  <div class="fshow-row flip reveal">
+    <div class="fshow-text">
+      <div class="fshow-num">02 — Content types</div>
+      <div class="fshow-title">Screenshots, links, code and notes — all saved.</div>
+      <p class="fshow-desc">CacheTray recognises what you copy and labels it automatically. A screenshot lands as an image with a thumbnail. A URL becomes a clickable link. Code is tagged and shown in a code preview. Everything else saves as a note.</p>
+      <div class="fshow-steps">
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Copy or right-click any image — saved with thumbnail preview</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Copy any URL — saved as a clickable link with site name</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Copy a code block — tagged and shown in a code preview</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Copy any other text — saved as a note</div>
+      </div>
+    </div>
+    <div class="fshow-media">
+      <div class="demo-visual">
+        <div class="demo-visual-header">
+          <div class="demo-visual-title"><img src="logo-icon.png" alt="" style="width:16px;height:16px;border-radius:3px;vertical-align:middle;margin-right:5px;"/>CacheTray</div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">4 items · auto-sorted</span>
+        </div>
+        <div class="demo-visual-body">
+          <div class="demo-item" style="border-left:3px solid #fbbf24;">
+            <div class="demo-item-icon" style="background:rgba(251,191,36,0.15)">🖼️</div>
+            <div class="demo-item-body"><div class="demo-item-tag" style="color:#fbbf24">IMAGE</div><div class="demo-item-text">error-screenshot.png · 342 KB</div></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">1m ago</span>
+          </div>
+          <div class="demo-item" style="border-left:3px solid #60a5fa;">
+            <div class="demo-item-icon" style="background:rgba(96,165,250,0.15)">🔗</div>
+            <div class="demo-item-body"><div class="demo-item-tag" style="color:#60a5fa">LINK</div><div class="demo-item-text">docs.stripe.com/api/errors</div></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">3m ago</span>
+          </div>
+          <div class="demo-item" style="border-left:3px solid #a78bfa;">
+            <div class="demo-item-icon" style="background:rgba(167,139,250,0.15)">⌨️</div>
+            <div class="demo-item-body"><div class="demo-item-tag" style="color:#a78bfa">CODE</div><div class="demo-item-text">const data = await res.json()</div></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">5m ago</span>
+          </div>
+          <div class="demo-item" style="border-left:3px solid rgba(255,255,255,0.15);">
+            <div class="demo-item-icon" style="background:rgba(255,255,255,0.05)">📝</div>
+            <div class="demo-item-body"><div class="demo-item-tag" style="color:rgba(255,255,255,0.3)">NOTE</div><div class="demo-item-text">"Compare these two layouts..."</div></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">8m ago</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 03 -->
+  <div class="fshow-row reveal" data-anim-idx="7">
+    <div class="fshow-text">
+      <div class="fshow-num">03 — Multi-select</div>
+      <div class="fshow-title">Select multiple items together.</div>
+      <p class="fshow-desc">Click the circle on any item to select it. Select as many as you want across any type — image, code, link, note. An action bar slides up so you can act on them all at once.</p>
+      <div class="fshow-steps">
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Tap the checkbox on any item to select it</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Select as many items as you need across any type</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Click "Send to Claude" or "Send to ChatGPT"</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>All selected items land in the AI chat input at once</div>
+      </div>
+    </div>
+    <div class="fshow-media">
+      <div class="demo-visual" style="position:relative;overflow:hidden;">
+        <div class="demo-visual-header">
+          <div class="demo-visual-title"><img src="logo-icon.png" alt="" style="width:16px;height:16px;border-radius:3px;vertical-align:middle;margin-right:5px;"/>CacheTray <span style="color:var(--faint);font-weight:400;">· prompt kit</span></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">select &amp; bundle</span>
+        </div>
+        <div style="display:flex;gap:6px;padding:8px 12px;border-bottom:0.5px solid var(--line);">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 11px;border-radius:20px;border:0.5px solid var(--lime);color:var(--lime);background:var(--lime-dim);">◎ all 3</div>
+        </div>
+        <div class="demo-visual-body" id="b7Body">
+          <div class="demo-item" id="b7Item1" style="border-left:3px solid #fbbf24;transition:all 0.2s;">
+            <div id="b7Circ1" style="width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;"></div>
+            <div class="demo-item-icon" style="background:rgba(251,191,36,0.15)">🖼️</div>
+            <div class="demo-item-body"><div class="demo-item-tag" style="color:#fbbf24">IMG</div><div class="demo-item-text">error-screenshot.png</div></div>
+          </div>
+          <div class="demo-item" id="b7Item2" style="border-left:3px solid #a78bfa;transition:all 0.2s;">
+            <div id="b7Circ2" style="width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;"></div>
+            <div class="demo-item-icon" style="background:rgba(167,139,250,0.15)">⌨️</div>
+            <div class="demo-item-body"><div class="demo-item-tag" style="color:#a78bfa">CODE</div><div class="demo-item-text">const res = await fetch(...)</div></div>
+          </div>
+          <div class="demo-item" id="b7Item3" style="border-left:3px solid #60a5fa;transition:all 0.2s;">
+            <div id="b7Circ3" style="width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;"></div>
+            <div class="demo-item-icon" style="background:rgba(96,165,250,0.15)">🔗</div>
+            <div class="demo-item-body"><div class="demo-item-tag" style="color:#60a5fa">LINK</div><div class="demo-item-text">docs.stripe.com/api/errors</div></div>
+          </div>
+        </div>
+        <div id="b7ActionBar" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:0.5px solid var(--line);background:rgba(13,13,13,0.95);transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1),opacity 0.3s;opacity:0;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);flex:1;" id="b7SelCount"></div>
+          <div id="b7ClaudeBtn" style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:5px 12px;border-radius:6px;background:var(--lime);color:#0d1a00;cursor:pointer;transition:all 0.15s;white-space:nowrap;">Send to Claude</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:5px 12px;border-radius:6px;border:0.5px solid var(--line2);color:var(--muted);cursor:pointer;white-space:nowrap;">Send to ChatGPT</div>
+        </div>
+        <div id="b7Toast" style="margin:0 12px 12px;background:rgba(200,240,96,0.07);border:0.5px solid rgba(200,240,96,0.2);border-radius:8px;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--lime);display:flex;align-items:center;gap:8px;opacity:0;transition:opacity 0.4s;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span id="b7ToastTxt">2 items inserted into Claude</span>
+        </div>
+        <div class="demo-cursor" id="b7Cursor">
+          <svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M0 0L0 18L4.5 13.5L7 20L9 19L6.5 12.5H12L0 0Z" fill="white" stroke="#000" stroke-width="1"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 04 -->
+  <div class="fshow-row flip reveal" data-anim-idx="8">
+    <div class="fshow-text">
+      <div class="fshow-num">04 — Send to AI</div>
+      <div class="fshow-title">Send selected context to ChatGPT or Claude.</div>
+      <p class="fshow-desc">Select what you need from your tray and click "Send to Claude" or "Send to ChatGPT". Everything goes straight into the AI chat input — images, links, code, notes — no file picker, no manual upload, no hunting through folders.</p>
+      <div class="fshow-steps">
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Select the items you want to send</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Click "Send to Claude" or "Send to ChatGPT"</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>CacheTray opens the AI tab and delivers everything</div>
+        <div class="fshow-step"><div class="fshow-step-dot"></div>Your prompt is ready — just hit send</div>
+      </div>
+    </div>
+    <div class="fshow-media">
+      <div style="display:flex;flex-direction:column;gap:10px;position:relative;">
+        <div class="demo-visual" style="position:relative;">
+          <div class="demo-visual-header">
+            <div class="demo-visual-title"><img src="logo-icon.png" alt="" style="width:16px;height:16px;border-radius:3px;vertical-align:middle;margin-right:5px;"/>CacheTray</div>
+            <div id="s8SelHdr" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--lime);opacity:0;transition:opacity 0.3s;">2 selected</div>
+          </div>
+          <div class="demo-visual-body" id="s8Body">
+            <div class="demo-item" id="s8Item1" style="border-left:3px solid #fbbf24;transition:all 0.2s;">
+              <div id="s8Circ1" style="width:15px;height:15px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;"></div>
+              <div class="demo-item-icon" style="background:rgba(251,191,36,0.15)">🖼️</div>
+              <div class="demo-item-body"><div class="demo-item-tag" style="color:#fbbf24">IMG</div><div class="demo-item-text">ui-bug-screenshot.png</div></div>
+            </div>
+            <div class="demo-item" id="s8Item2" style="border-left:3px solid rgba(255,255,255,0.15);transition:all 0.2s;">
+              <div id="s8Circ2" style="width:15px;height:15px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;"></div>
+              <div class="demo-item-icon" style="background:rgba(255,255,255,0.05)">📝</div>
+              <div class="demo-item-body"><div class="demo-item-tag" style="color:rgba(255,255,255,0.3)">TEXT</div><div class="demo-item-text">Fix the layout spacing issue</div></div>
+            </div>
+          </div>
+          <div id="s8ActionBar" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:0.5px solid var(--line);max-height:0;overflow:hidden;opacity:0;transition:max-height 0.35s cubic-bezier(0.4,0,0.2,1),opacity 0.25s;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);flex:1;" id="s8SelLabel"></div>
+            <div id="s8ChatGPTBtn" style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:5px 12px;border-radius:6px;background:var(--lime);color:#0d1a00;cursor:pointer;transition:all 0.15s;white-space:nowrap;">Send → ChatGPT</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:5px 12px;border-radius:6px;border:0.5px solid var(--line2);color:var(--muted);white-space:nowrap;">→ Claude</div>
+          </div>
+          <div class="demo-cursor" id="s8Cursor">
+            <svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M0 0L0 18L4.5 13.5L7 20L9 19L6.5 12.5H12L0 0Z" fill="white" stroke="#000" stroke-width="1"/></svg>
+          </div>
+        </div>
+        <div id="s8Arrow" style="display:flex;align-items:center;gap:8px;padding:0 4px;opacity:0;transition:opacity 0.4s;">
+          <div style="flex:1;height:0.5px;background:var(--line2);"></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap;">injecting into ChatGPT</span>
+          <div style="flex:1;height:0.5px;background:var(--line2);"></div>
+        </div>
+        <div id="s8Target" style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;overflow:hidden;opacity:0;transition:opacity 0.45s;">
+          <div style="padding:8px 12px;border-bottom:0.5px solid var(--line);display:flex;align-items:center;gap:8px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#10a37f;"></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">ChatGPT · New chat</div>
+          </div>
+          <div style="padding:10px 12px 6px;">
+            <div id="s8InjectImg" style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,191,36,0.1);border:0.5px solid rgba(251,191,36,0.3);border-radius:6px;padding:4px 8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fbbf24;margin-bottom:6px;opacity:0;transform:translateY(6px) scale(0.95);transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);">🖼️ ui-bug-screenshot.png</div>
+            <div id="s8InjectText" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);line-height:1.5;opacity:0;transition:opacity 0.4s;">Fix the layout spacing issue</div>
+          </div>
+          <div id="s8ReadyBar" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.02);border-top:0.5px solid var(--line);opacity:0;transition:opacity 0.3s;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--lime);">✓ Context injected — ready</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:4px 12px;border-radius:6px;background:var(--lime);color:#0d1a00;">↑ Send</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<div class="divider"></div>
+
+<!-- What it captures -->
+<section id="types">
+  <div class="reveal">
+    <div class="section-label">What it saves</div>
+    <h2 class="section-title">Five types of content,<br>all automatically sorted.</h2>
+    <p class="section-sub">CacheTray detects what you copied and puts it in the right category so you can filter and find it quickly.</p>
+  </div>
+
+  <div class="types-grid reveal">
+    <div class="type-card link">
+      <div class="type-tag" style="color:var(--blue);">🔗 Links</div>
+      <div class="type-title">URLs & Links</div>
+      <div class="type-desc">Any URL you copy is saved as a clickable link with the site name shown. Useful for keeping docs, references, and resource pages close by.</div>
+      <div class="type-preview" style="color:var(--blue);">
+        notion.so › Meeting Notes<br>
+        <span style="color:var(--lime);font-size:10px;">https://notion.so/workspace/Meeting-Notes-a1b2...</span><br>
+        <span style="color:var(--faint);font-size:10px;">↳ just now · click to open</span>
+      </div>
+    </div>
+
+    <div class="type-card code">
+      <div class="type-tag" style="color:var(--purple);">⌨️ Code</div>
+      <div class="type-title">Code Snippets & Error Messages</div>
+      <div class="type-desc">Code is auto-detected — JavaScript, Python, Bash, SQL, stack traces, terminal output. It gets a code block preview and a one-click copy button.</div>
+      <div class="type-preview" style="color:var(--purple);">
+        const res = await fetch(url)<br>
+        const data = await res.json()<br>
+        <span style="color:var(--faint);font-size:10px;">↳ js · 2 mins ago</span>
+      </div>
+    </div>
+
+    <div class="type-card image">
+      <div class="type-tag" style="color:var(--amber);">🖼️ Images</div>
+      <div class="type-title">Screenshots & Images</div>
+      <div class="type-desc">Copy or right-click any image on a webpage to save it. You get a thumbnail preview. Click to expand, then copy or download it. Images are auto-compressed to save space.</div>
+      <div class="type-preview" style="padding:0;overflow:hidden;border-radius:8px;">
+        <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=120&fit=crop&auto=format" style="width:100%;height:90px;object-fit:cover;display:block;" alt=""/>
+        <div style="padding:8px 10px;background:#111;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11px;color:var(--muted);">screenshot-2024.png</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">342 KB · just now</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="type-card task">
+      <div class="type-tag" style="color:var(--red);">✅ Tasks</div>
+      <div class="type-title">Tasks with Checkboxes</div>
+      <div class="type-desc">Create quick to-do items directly in CacheTray. Tap the circle to mark them done. Good for follow-up actions while you're in the middle of a session.</div>
+      <div class="type-preview">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div style="width:14px;height:14px;border-radius:4px;background:var(--green);display:flex;align-items:center;justify-content:center;">✓</div>
+          <span style="color:var(--faint);text-decoration:line-through;font-size:11px;">Review PR #42</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:14px;height:14px;border-radius:4px;border:1px solid rgba(255,255,255,0.2);"></div>
+          <span style="color:var(--text);font-size:11px;">Deploy to staging</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="type-card text" style="grid-column:1/-1;">
+      <div class="type-tag" style="color:rgba(255,255,255,0.4);">📝 Notes & Text</div>
+      <div class="type-title">Plain Text & Notes</div>
+      <div class="type-desc">Any text you copy that isn't a URL or code is saved as a note. You can also type notes directly into CacheTray using the input bar at the bottom of the panel.</div>
+      <div class="type-preview" style="color:var(--muted);">
+        "Ask Claude to compare these UI states and suggest the smallest product copy change..."<br>
+        <span style="color:var(--faint);font-size:10px;">↳ 12 mins ago · click to expand</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Features -->
+<section id="features">
+  <div class="reveal">
+    <div class="section-label">Also included</div>
+    <h2 class="section-title">Everything else<br><span style="color:var(--lime);">included free.</span></h2>
+    <p class="section-sub">No account required, no configuration needed.</p>
+  </div>
+
+  <div class="features-grid reveal">
+    <div class="feat-card">
+      <div class="feat-icon" style="background:var(--lime-dim);">🔎</div>
+      <div class="feat-title">Search</div>
+      <div class="feat-desc">Type to search. Partial words work. Toggle to search across all workspaces at once.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(251,191,36,0.1);">⭐</div>
+      <div class="feat-title">Favourites</div>
+      <div class="feat-desc">Star any item to keep it permanently. Starred items skip the 3-day auto-cleanup.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(167,139,250,0.12);">🗂️</div>
+      <div class="feat-title">Workspaces</div>
+      <div class="feat-desc">Create separate tabs for each project, session, or topic. Switch between them instantly.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:var(--lime-dim);">↩️</div>
+      <div class="feat-title">Undo delete</div>
+      <div class="feat-desc">Delete something by accident? Click Undo within 4 seconds to restore it before it's gone.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(248,113,113,0.1);">🕐</div>
+      <div class="feat-title">Auto-delete after 3 days</div>
+      <div class="feat-desc">Items clear out after 3 days so the tray stays clean. Starred items are exempt.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(251,191,36,0.1);">🖼️</div>
+      <div class="feat-title">Image preview</div>
+      <div class="feat-desc">Click any image to expand it and see the full preview. Copy it or download it without leaving the panel.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(96,165,250,0.12);">⌨️</div>
+      <div class="feat-title">Keyboard shortcut</div>
+      <div class="feat-desc">Press Ctrl+Shift+Y (or Cmd+Shift+Y on Mac) to open CacheTray from any tab instantly.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section style="padding:40px 32px 80px;">
+  <div class="stat-grid reveal">
+    <div class="stat-card">
+      <div class="stat-num">~80ms</div>
+      <div class="stat-label">Time to save after you press Ctrl+C</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">5</div>
+      <div class="stat-label">Content types: text, links, code, images, tasks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">0</div>
+      <div class="stat-label">Data sent to CacheTray servers</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- CTA -->
+<div class="cta-section reveal">
+  <div class="cta-glow"></div>
+  <div class="section-label" style="justify-content:center;display:flex;">Get started</div>
+  <h2 class="section-title" style="font-size:clamp(36px,5vw,64px);">
+    Try it free —<br>
+    <span style="color:var(--lime);">takes 30 seconds to install.</span>
+  </h2>
+  <p style="font-size:16px;color:var(--muted);max-width:420px;margin:0 auto 40px;line-height:1.7;">
+    Install the extension, copy something from any webpage, and open CacheTray. That's it — no setup, no account, no configuration needed.
+  </p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;">
+    <a href="https://chromewebstore.google.com/detail/cachetray/pgohpbolcaaoenhaapkikmheckannlpn" class="btn-primary" style="font-size:16px;padding:16px 32px;" target="_blank" rel="noopener">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Add to Chrome — Free
+    </a>
+  </div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint);">
+    No account · No cloud · No tracking
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-left">
+    <img src="logo-icon.png" alt="CacheTray"/>
+    CacheTray · Free Chrome Extension
+  </div>
+  <div class="footer-center">
+    <a href="https://www.producthunt.com/products/cachetray-clipboard-for-ai-workflows?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-cachetray" target="_blank" rel="noopener noreferrer">
+      <img alt="CacheTray on Product Hunt" width="200" height="43" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1143737&theme=dark&t=1778519306304" style="display:block;"/>
+    </a>
+  </div>
+  <div class="footer-links">
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="blog/">Blog</a>
+    <a href="https://buymeacoffee.com/vinaycjoshz" target="_blank">☕ Buy me a coffee</a>
+  </div>
+</footer>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "CacheTray",
+  "description": "Free Chrome extension that saves screenshots, links, code and text while you browse — then lets you send them directly into ChatGPT or Claude in one click.",
+  "applicationCategory": "BrowserApplication",
+  "operatingSystem": "Chrome",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "url": "https://cachetray.weenay.com/",
+  "downloadUrl": "https://chromewebstore.google.com/detail/cachetray/pgohpbolcaaoenhaapkikmheckannlpn"
+}
+</script>
+
+<script>
+// ── Hero mockup animation ───────────────────────────────────────────────────
+(function() {
+  var tabData = {
+    pk: [
+      { cls:'t-link',  icon:'🔗', type:'LINK',  text:'docs.anthropic.com/api-reference' },
+      { cls:'t-code',  icon:'</>',type:'CODE',  text:'TypeError: Cannot read prop…' },
+      { cls:'t-image', icon:null, type:'IMAGE', text:'screenshot-checkout-error.png' },
+      { cls:'t-code',  icon:'</>',type:'CODE',  text:"const res = await fetch('/api…" },
+    ],
+    claude: [
+      { cls:'t-link',  icon:'🔗', type:'LINK', text:'claude.ai/new · new conversation' },
+      { cls:'t-code',  icon:'</>',type:'CODE', text:'def analyze_text(input):' },
+      { cls:'t-text',  icon:'📝', type:'NOTE', text:'Rewrite in a friendlier tone' },
+    ],
+    research: [
+      { cls:'t-link', icon:'🔗', type:'LINK', text:'arxiv.org/abs/2305.15334' },
+      { cls:'t-link', icon:'🔗', type:'LINK', text:'openai.com/research/gpt-4' },
+      { cls:'t-link', icon:'🔗', type:'LINK', text:'github.com/anthropics/sdk-python' },
+      { cls:'t-text', icon:'📝', type:'NOTE', text:'Compare these model approaches…' },
+    ]
+  };
+
+  var paused  = false;
+  var wrap    = document.getElementById('hm-items');
+  var countEl = document.getElementById('hm-count');
+  var toast   = document.getElementById('hm-toast');
+  var tText   = document.getElementById('hm-toast-text');
+  var bar     = document.getElementById('hm-bar');
+  var barBtn  = document.getElementById('hm-bar-btn');
+  var barCnt  = document.getElementById('hm-bar-count');
+  var tabEls  = document.querySelectorAll('.hm-tab[data-tab]');
+
+  if (!wrap || !toast) return;
+
+  function w(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
+  function makeItem(item, i) {
+    var el = document.createElement('div');
+    el.className = 'hm-item';
+    el.id = 'hm-item-' + i;
+    var iconHtml;
+    if (item.cls === 't-image') {
+      iconHtml = '<div class="hm-thumb"></div>';
+    } else {
+      iconHtml = '';
+    }
+    el.innerHTML =
+      '<div class="hm-circ"></div>' +
+      '<div class="hm-item-icon ' + item.cls + '">' + iconHtml + '</div>' +
+      '<div class="hm-item-body">' +
+        '<div class="hm-item-type ' + item.cls + '">' + item.type + '</div>' +
+        '<div class="hm-item-text">' + item.text.replace(/</g,'&lt;') + '</div>' +
+      '</div>';
+    if (item.icon) {
+      el.querySelector('.hm-item-icon').textContent = item.icon;
+    }
+    return el;
+  }
+
+  function loadTab(id) {
+    var data = tabData[id] || [];
+    wrap.innerHTML = '';
+    countEl.textContent = String(data.length);
+    data.forEach(function(item, i) {
+      var el = makeItem(item, i);
+      wrap.appendChild(el);
+      setTimeout(function(){ el.classList.add('visible'); }, 50 + i * 70);
+    });
+  }
+
+  function setActiveTab(id) {
+    tabEls.forEach(function(t){ t.classList.toggle('active', t.dataset.tab === id); });
+  }
+
+  function clearBar() {
+    bar.classList.remove('visible');
+    barBtn.classList.remove('sending');
+    barBtn.textContent = 'Send to Claude →';
+    barCnt.textContent = '0 items selected';
+    toast.classList.remove('show');
+  }
+
+  // Tab click handlers
+  tabEls.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var id = tab.dataset.tab;
+      setActiveTab(id);
+      clearBar();
+      paused = true;
+      loadTab(id);
+      setTimeout(function(){ paused = false; }, 5000);
+    });
+  });
+
+  function showToast(txt) {
+    tText.textContent = txt;
+    toast.classList.add('show');
+    return w(850).then(function(){ toast.classList.remove('show'); });
+  }
+
+  function toastLabel(cls) {
+    return cls === 't-link' ? 'LINK saved' :
+           cls === 't-code' ? 'CODE saved' :
+           cls === 't-image'? 'IMAGE saved' : 'NOTE saved';
+  }
+
+  async function run() {
+    if (paused) { await w(500); setTimeout(run,0); return; }
+
+    // Reset to pk tab
+    setActiveTab('pk');
+    wrap.innerHTML = '';
+    countEl.textContent = '0';
+    clearBar();
+
+    await w(900);
+
+    // Phase 1: items appear one by one with toasts
+    var data = tabData.pk;
+    for (var i = 0; i < data.length; i++) {
+      if (paused) { setTimeout(run,0); return; }
+      var el = makeItem(data[i], i);
+      wrap.appendChild(el);
+      countEl.textContent = String(i + 1);
+      await w(30);
+      el.classList.add('visible');
+      await showToast(toastLabel(data[i].cls));
+      await w(180);
+    }
+
+    await w(500);
+    if (paused) { setTimeout(run,0); return; }
+
+    // Phase 2: reveal checkboxes
+    wrap.querySelectorAll('.hm-circ').forEach(function(c){ c.classList.add('show'); });
+    await w(400);
+
+    // Phase 3: select first 3 items
+    var allItems = [].slice.call(wrap.querySelectorAll('.hm-item'));
+    var allCircs = [].slice.call(wrap.querySelectorAll('.hm-circ'));
+    var sel = 0;
+    for (var j = 0; j < Math.min(3, allItems.length); j++) {
+      if (paused) { setTimeout(run,0); return; }
+      allCircs[j].classList.add('checked');
+      allItems[j].classList.add('selected');
+      sel++;
+      barCnt.textContent = sel + ' item' + (sel > 1 ? 's' : '') + ' selected';
+      if (sel === 1) bar.classList.add('visible');
+      await w(370);
+    }
+
+    await w(650);
+    if (paused) { setTimeout(run,0); return; }
+
+    // Phase 4: send button activates
+    barBtn.classList.add('sending');
+    barBtn.textContent = 'Sending… ✓';
+    await w(1400);
+
+    setTimeout(run, 0);
+  }
+
+  w(700).then(run);
+})();
+
+// ── How it works step switcher ──────────────────────────────────────────────
+function setStep(n) {
+  document.querySelectorAll('.how-step').forEach((s,i) => s.classList.toggle('active', i===n));
+  document.querySelectorAll('.demo-screen').forEach((s,i) => s.classList.toggle('active', i===n));
+}
+let stepIdx = 0;
+setInterval(() => { stepIdx = (stepIdx+1)%4; setStep(stepIdx); }, 3000);
+
+// ── Scroll reveal (covers both .reveal and .reveal-stagger) ────────────────
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('visible'); observer.unobserve(e.target); } });
+}, { threshold:0.1 });
+document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => observer.observe(el));
+
+// ── Demo tab switching ──────────────────────────────────────────────────────
+const panelIntervals = {};
+function setDemoTab(n) {
+  document.querySelectorAll('.demo-tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.demo-panel').forEach((p,i) => {
+    const wasActive = p.classList.contains('active');
+    p.classList.toggle('active', i===n);
+    if (!wasActive && i===n) {
+      Object.values(panelIntervals).forEach(id => clearInterval(id));
+      setTimeout(() => startPanelAnim(n), 400);
+    }
+  });
+}
+
+// ── Cursor helpers — position relative to the demo-visual container ─────────
+// We compute position from element.getBoundingClientRect() vs container rect
+// so the cursor always tracks the actual DOM element exactly.
+
+function getCursorContainer(cursorId) {
+  const cur = document.getElementById(cursorId);
+  return cur ? cur.parentElement : null;
+}
+
+function elCenterRelative(el, container) {
+  if(!el || !container) return { x:0, y:0 };
+  const eR = el.getBoundingClientRect();
+  const cR = container.getBoundingClientRect();
+  return {
+    x: eR.left - cR.left + eR.width/2,
+    y: eR.top  - cR.top  + eR.height/2
+  };
+}
+
+function setCursor(cursorId, x, y) {
+  const el = document.getElementById(cursorId);
+  if(!el) return;
+  el.classList.add('visible');
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+}
+
+// Move cursor to an element's center, return promise after transition completes
+function moveCursorToEl(cursorId, targetEl, delay=0) {
+  return new Promise(res => {
+    setTimeout(() => {
+      const container = getCursorContainer(cursorId);
+      if(!container || !targetEl) { res(); return; }
+      const pos = elCenterRelative(targetEl, container);
+      setCursor(cursorId, pos.x, pos.y);
+      setTimeout(res, 680); // wait for CSS transition
+    }, delay);
+  });
+}
+
+// Move cursor to raw x,y (percentage of container width/height)
+function moveCursorPct(cursorId, xPct, yPct, delay=0) {
+  return new Promise(res => {
+    setTimeout(() => {
+      const container = getCursorContainer(cursorId);
+      if(!container) { res(); return; }
+      const r = container.getBoundingClientRect();
+      setCursor(cursorId, r.width * xPct, r.height * yPct);
+      setTimeout(res, 680);
+    }, delay);
+  });
+}
+
+function clickCursor(cursorId, delay=0) {
+  return new Promise(res => {
+    setTimeout(() => {
+      const el = document.getElementById(cursorId);
+      if(el){ el.classList.add('clicking'); setTimeout(() => el.classList.remove('clicking'), 150); }
+      setTimeout(res, 200);
+    }, delay);
+  });
+}
+
+function hideCursor(cursorId, delay=0) {
+  return new Promise(res => {
+    setTimeout(() => {
+      const el = document.getElementById(cursorId);
+      if(el) el.classList.remove('visible');
+      setTimeout(res, 300);
+    }, delay);
+  });
+}
+
+// ── Panel 0: Auto-capture ────────────────────────────────────────────────────
+const cap0Items = [
+  { color:'#fbbf24', icon:'🖼️', tag:'IMAGE', tagColor:'#fbbf24', text:'screenshot-2024.png', msg:'🖼️ Image captured' },
+  { color:'rgba(255,255,255,0.15)', icon:'📝', tag:'TEXT', tagColor:'rgba(255,255,255,0.3)', text:'"Ship it, then iterate"', msg:'📝 Note captured' },
+  { color:'#60a5fa', icon:'🔗', tag:'LINK', tagColor:'#60a5fa', text:'stripe.com/docs/api', msg:'🔗 Link captured' },
+];
+let cap0Idx = 0;
+
+function runCap0() {
+  const body = document.getElementById('cap0Body');
+  const toast = document.getElementById('cap0Toast');
+  const toastTxt = document.getElementById('cap0ToastTxt');
+  if(!body) return;
+  const item = cap0Items[cap0Idx % cap0Items.length]; cap0Idx++;
+  toastTxt.textContent = item.msg;
+  toast.style.opacity = '1';
+  setTimeout(() => toast.style.opacity='0', 2000);
+  const el = document.createElement('div');
+  el.className = 'demo-item';
+  el.style.cssText = `border-left:3px solid ${item.color};background:rgba(200,240,96,0.04);animation:itemEnter 0.4s cubic-bezier(0.34,1.56,0.64,1) both;`;
+  el.innerHTML = `<div class="demo-item-icon" style="background:rgba(200,240,96,0.08)">${item.icon}</div><div class="demo-item-body"><div class="demo-item-tag" style="color:${item.tagColor}">${item.tag}</div><div class="demo-item-text">${item.text}</div></div><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">just now</span>`;
+  body.insertBefore(el, body.firstChild);
+  setTimeout(() => el.style.background='', 600);
+  if(body.children.length > 4) body.removeChild(body.lastChild);
+}
+
+// ── Panel 1: Favourites ─────────────────────────────────────────────────────
+// Also animates the favourites category pill appearing
+let fav1Running = false;
+async function animFav1() {
+  if(fav1Running) return;
+  fav1Running = true;
+
+  const item1   = document.getElementById('favItem1');
+  const acts1   = document.getElementById('fav1Acts');
+  const starBtn = document.getElementById('fav1Btn');
+  const badge   = document.getElementById('fav1Badge');
+  const tag1    = document.getElementById('fav1Tag');
+  const favPill = document.getElementById('favCatPill'); // pill we'll animate
+  const cur     = 'fav1Cursor';
+  if(!item1 || !acts1) { fav1Running=false; return; }
+
+  // Step 1: cursor glides to the first item's star button area
+  await moveCursorToEl(cur, item1, 0);
+  // Show action buttons
+  acts1.style.opacity = '1';
+  // Step 2: cursor moves exactly onto the star button
+  await moveCursorToEl(cur, starBtn, 200);
+  // Hover glow on star
+  starBtn.style.background = 'rgba(251,191,36,0.12)';
+  starBtn.style.borderColor = 'rgba(251,191,36,0.4)';
+  starBtn.querySelector('svg').style.stroke = '#fbbf24';
+  await clickCursor(cur, 300);
+  // Favourite!
+  item1.style.borderColor = 'rgba(251,191,36,0.35)';
+  badge.style.opacity = '1';
+  tag1.textContent = 'CODE · ⭐ fav';
+  starBtn.querySelector('svg').style.fill = 'rgba(251,191,36,0.25)';
+
+  // Step 3: "Favourites" category pill appears and cursor moves to it
+  if(favPill) {
+    favPill.style.opacity = '1';
+    favPill.style.transform = 'scale(1)';
+    await moveCursorToEl(cur, favPill, 400);
+    await clickCursor(cur, 100);
+    favPill.style.background = '#fbbf24';
+    favPill.style.color = '#1a0f00';
+    favPill.style.borderColor = '#fbbf24';
+  }
+
+  await hideCursor(cur, 1000);
+
+  // Reset everything
+  setTimeout(() => {
+    item1.style.borderColor = '';
+    badge.style.opacity = '0';
+    tag1.textContent = 'CODE';
+    starBtn.style.background=''; starBtn.style.borderColor='';
+    starBtn.querySelector('svg').style.stroke=''; starBtn.querySelector('svg').style.fill='';
+    acts1.style.opacity = '0';
+    if(favPill) {
+      favPill.style.background = '';
+      favPill.style.color = '';
+      favPill.style.borderColor = '';
+    }
+    fav1Running = false;
+  }, 2000);
+}
+
+// ── Panel 2: Smart Search ────────────────────────────────────────────────────
+let srch2Running = false;
+async function animSearch2() {
+  if(srch2Running) return;
+  srch2Running = true;
+
+  const bar     = document.getElementById('srch2Bar');
+  const query   = document.getElementById('srch2Query');
+  const textCur = document.getElementById('srch2TextCur');
+  const chips   = document.getElementById('srch2Chips');
+  const results = document.getElementById('srch2Results');
+  const count   = document.getElementById('srch2Count');
+  const chipImg = document.getElementById('srch2ChipImg');
+  const res1    = document.getElementById('srch2Res1');
+  const res2    = document.getElementById('srch2Res2');
+  const res3    = document.getElementById('srch2Res3');
+  const cur     = 'srch2AnimCursor';
+  if(!bar) { srch2Running=false; return; }
+
+  // Reset
+  query.textContent=''; chips.style.opacity='0'; results.style.opacity='0';
+  count.style.opacity='0'; count.textContent=''; bar.style.borderColor=''; bar.style.boxShadow='';
+  textCur.style.opacity='0';
+  [res1,res2,res3].forEach(r => { if(r){r.style.display='none'; r.style.opacity='1';} });
+  chipImg.style.background=''; chipImg.style.color=''; chipImg.style.borderColor='';
+
+  // Step 1: cursor moves to search bar and clicks
+  await moveCursorToEl(cur, bar, 0);
+  await clickCursor(cur, 300);
+  bar.style.borderColor = 'rgba(200,240,96,0.5)';
+  bar.style.boxShadow   = '0 0 0 3px rgba(200,240,96,0.08)';
+  textCur.style.opacity = '1';
+  chips.style.opacity   = '1';
+
+  // Cursor fades — user typing
+  await hideCursor(cur, 200);
+
+  // Step 2: type "dashboard" letter by letter
+  const word = 'dashboard';
+  for(let i=0; i<word.length; i++) {
+    await new Promise(r => setTimeout(r, 105));
+    query.textContent = word.slice(0, i+1);
+    if(i === 2 && res1) { res1.style.display='flex'; results.style.opacity='1'; }
+    if(i === 5 && res2) { res2.style.display='flex'; }
+    if(i === 8 && res3) {
+      res3.style.display='flex';
+      count.textContent = '3 results';
+      count.style.opacity = '1';
+    }
+  }
+
+  await new Promise(r => setTimeout(r, 900));
+
+  // Step 3: cursor reappears, moves to images chip and clicks
+  await moveCursorToEl(cur, chipImg, 0);
+  chipImg.style.background   = 'rgba(251,191,36,0.12)';
+  chipImg.style.borderColor  = 'rgba(251,191,36,0.45)';
+  chipImg.style.color        = '#fbbf24';
+  await clickCursor(cur, 300);
+
+  // Filter — hide non-image results
+  if(res2) res2.style.opacity = '0';
+  if(res3) res3.style.opacity = '0';
+  count.textContent = '1 result';
+  setTimeout(() => {
+    if(res2) res2.style.display='none';
+    if(res3) res3.style.display='none';
+  }, 300);
+
+  await hideCursor(cur, 1000);
+
+  setTimeout(() => {
+    bar.style.borderColor=''; bar.style.boxShadow='';
+    textCur.style.opacity='0';
+    query.textContent='';
+    chips.style.opacity='0';
+    results.style.opacity='0';
+    count.style.opacity='0'; count.textContent='';
+    [res1,res2,res3].forEach(r => { if(r){r.style.display='none'; r.style.opacity='1';} });
+    chipImg.style.background=''; chipImg.style.color=''; chipImg.style.borderColor='';
+    srch2Running = false;
+  }, 2000);
+}
+
+// ── Panel 3: Delete & Undo ────────────────────────────────────────────────────
+let del3State = 'idle';
+async function animDel3() {
+  if(del3State !== 'idle') return;
+  del3State = 'running';
+
+  const item1    = document.getElementById('del3Item1');
+  const acts1    = document.getElementById('del3Acts1');
+  const delBtn   = document.getElementById('del3Btn1');
+  const undoBar  = document.getElementById('del3UndoBar');
+  const undoFill = document.getElementById('del3UndoFill');
+  const undoBtn  = document.getElementById('del3UndoBtn');
+  const cur      = 'del3Cursor';
+  if(!item1) { del3State='idle'; return; }
+
+  // Step 1: cursor glides onto the item
+  await moveCursorToEl(cur, item1, 0);
+  acts1.style.opacity = '1';
+
+  // Step 2: cursor moves exactly onto the trash button
+  await moveCursorToEl(cur, delBtn, 300);
+  delBtn.style.background = 'rgba(248,113,113,0.12)';
+
+  // Step 3: click — item slides out
+  await clickCursor(cur, 200);
+  item1.style.transition = 'all 0.35s ease';
+  item1.style.opacity = '0';
+  item1.style.transform = 'translateX(20px)';
+  item1.style.maxHeight = '0';
+  item1.style.overflow = 'hidden';
+  item1.style.padding = '0';
+  item1.style.border = 'none';
+
+  // Undo bar appears
+  setTimeout(() => {
+    undoBar.classList.add('show');
+    undoFill.style.transition='none'; undoFill.style.width='100%';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      undoFill.style.transition='width 3.5s linear'; undoFill.style.width='0%';
+    }));
+  }, 350);
+
+  // Step 4: cursor moves exactly to the undo button
+  await moveCursorToEl(cur, undoBtn, 900);
+  undoBtn.style.color = '#c8f060';
+  await clickCursor(cur, 200);
+
+  // Undo — restore item
+  item1.style.opacity='1'; item1.style.transform=''; item1.style.maxHeight='';
+  item1.style.overflow=''; item1.style.padding=''; item1.style.border='';
+  undoBar.classList.remove('show');
+  undoBtn.style.color = '';
+
+  await hideCursor(cur, 600);
+  setTimeout(() => {
+    acts1.style.opacity='0';
+    delBtn.style.background='';
+    del3State = 'idle';
+  }, 1500);
+}
+
+// ── Panel 4: Image expand + copy ─────────────────────────────────────────────
+let img4Running = false;
+async function animImg4() {
+  if(img4Running) return;
+  img4Running = true;
+
+  const imgItem    = document.getElementById('imgItem4');
+  const imgExp     = document.getElementById('imgExpanded');
+  const imgCopied  = document.getElementById('imgCopied');
+  const imgStatus  = document.getElementById('imgPreviewStatus');
+  const copyImgBtn = document.getElementById('copyImgBtn');
+  const cur        = 'img4Cursor';
+  if(!imgItem) { img4Running=false; return; }
+
+  // Make sure collapsed first
+  imgExp.style.display = 'none';
+  imgStatus.textContent = 'preview ready · click to expand';
+
+  // Step 1: cursor moves to the image item (thumbnail area)
+  await moveCursorToEl(cur, imgItem, 0);
+
+  // Step 2: cursor moves to thumbnail specifically
+  const thumb = imgItem.querySelector('img');
+  if(thumb) await moveCursorToEl(cur, thumb, 300);
+  await clickCursor(cur, 200);
+
+  // Expand
+  imgExp.style.display = 'block';
+  imgStatus.textContent = 'expanded · click to collapse';
+
+  // Step 3: cursor moves to COPY IMAGE button
+  await moveCursorToEl(cur, copyImgBtn, 700);
+  copyImgBtn.style.background = 'rgba(52,211,153,0.12)';
+  copyImgBtn.style.borderColor = 'rgba(52,211,153,0.5)';
+  await clickCursor(cur, 300);
+
+  // Copied!
+  imgCopied.style.opacity = '1';
+  copyImgBtn.style.background = '';
+  copyImgBtn.style.borderColor = '';
+
+  await hideCursor(cur, 800);
+
+  setTimeout(() => {
+    imgExp.style.display = 'none';
+    imgStatus.textContent = 'preview ready · click to expand';
+    imgCopied.style.opacity = '0';
+    img4Running = false;
+  }, 3000);
+}
+
+// ── Panel 5: Bulk select & share ─────────────────────────────────────────────
+let bulk5Running = false;
+let bulk5Selected = new Set();
+
+function setBulkItem(itemId, circleId, selected) {
+  const item = document.getElementById(itemId);
+  const circle = document.getElementById(circleId);
+  if(!item || !circle) return;
+  if(selected) {
+    bulk5Selected.add(itemId);
+    circle.style.background = 'var(--green)';
+    circle.style.borderColor = 'var(--green)';
+    circle.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#141414" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 5 4 7 8 3"/></svg>';
+    item.style.background = 'rgba(52,211,153,0.04)';
+    item.style.borderColor = 'rgba(52,211,153,0.2)';
+  } else {
+    bulk5Selected.delete(itemId);
+    circle.style.background = '';
+    circle.style.borderColor = 'rgba(255,255,255,0.2)';
+    circle.innerHTML = '';
+    item.style.background = '';
+    item.style.borderColor = '';
+  }
+  // Update action bar
+  const bar = document.getElementById('bulkActionBar');
+  const countLabel = document.getElementById('bulkCountLabel');
+  const selCount = document.getElementById('bulkSelCount');
+  const n = bulk5Selected.size;
+  if(n > 0) {
+    bar.style.transform = 'translateY(0)';
+    bar.style.opacity = '1';
+    countLabel.textContent = n + ' selected';
+    if(selCount) selCount.textContent = n + ' selected';
+  } else {
+    bar.style.transform = 'translateY(100%)';
+    bar.style.opacity = '0';
+    if(selCount) selCount.textContent = '';
+  }
+}
+
+function resetBulk5() {
+  ['bulkItem1','bulkItem2','bulkItem3'].forEach((id,i) => {
+    setBulkItem(id, 'bulkCircle'+(i+1), false);
+  });
+  const sheet = document.getElementById('bulkShareSheet');
+  if(sheet) sheet.style.transform = 'translateY(100%)';
+  bulk5Selected.clear();
+  const bar = document.getElementById('bulkActionBar');
+  if(bar) { bar.style.transform='translateY(100%)'; bar.style.opacity='0'; }
+}
+
+async function animBulk5() {
+  if(bulk5Running) return;
+  bulk5Running = true;
+  resetBulk5();
+
+  const cur = 'bulk5Cursor';
+  const circle1 = document.getElementById('bulkCircle1');
+  const circle2 = document.getElementById('bulkCircle2');
+  const shareBtn = document.getElementById('bulkShareBtn');
+  const shareSheet = document.getElementById('bulkShareSheet');
+  if(!circle1) { bulk5Running=false; return; }
+
+  // Step 1: cursor moves to circle of item 1 and clicks
+  await moveCursorToEl(cur, circle1, 0);
+  await clickCursor(cur, 300);
+  setBulkItem('bulkItem1','bulkCircle1', true);
+
+  // Step 2: cursor moves to circle of item 2 and clicks
+  await moveCursorToEl(cur, circle2, 400);
+  await clickCursor(cur, 300);
+  setBulkItem('bulkItem2','bulkCircle2', true);
+
+  // Step 3: cursor moves to Share button
+  await moveCursorToEl(cur, shareBtn, 600);
+  shareBtn.style.background = '#d8ff70';
+  await clickCursor(cur, 300);
+  shareBtn.style.background = '';
+
+  // Step 4: share sheet slides up
+  shareSheet.style.transform = 'translateY(0)';
+  await hideCursor(cur, 500);
+
+  // Reset after showing share sheet
+  setTimeout(() => {
+    shareSheet.style.transform = 'translateY(100%)';
+    resetBulk5();
+    bulk5Running = false;
+  }, 3500);
+}
+
+// ── Panel 6: Insert into AI chats ────────────────────────────────────────────
+let ins6Running = false;
+let ins6Sel = new Set();
+
+function setIns6Item(n, on) {
+  const item = document.getElementById('ins6Item'+n);
+  const circ = document.getElementById('ins6Circ'+n);
+  if(!item || !circ) return;
+  if(on) {
+    ins6Sel.add(n);
+    circ.style.background  = 'var(--lime)';
+    circ.style.borderColor = 'var(--lime)';
+    circ.innerHTML = '<svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#141414" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 5 4 7 8 3"/></svg>';
+    item.style.background  = 'rgba(200,240,96,0.05)';
+    item.style.borderColor = 'rgba(200,240,96,0.25)';
+  } else {
+    ins6Sel.delete(n);
+    circ.style.background  = '';
+    circ.style.borderColor = 'rgba(255,255,255,0.2)';
+    circ.innerHTML = '';
+    item.style.background  = '';
+    item.style.borderColor = '';
+  }
+  const bar = document.getElementById('ins6ActionBar');
+  const lbl = document.getElementById('ins6CountLbl');
+  const hdr = document.getElementById('ins6SelHeader');
+  const cnt = ins6Sel.size;
+  if(cnt > 0) {
+    if(bar){ bar.style.maxHeight='44px'; bar.style.opacity='1'; }
+    if(lbl) lbl.textContent = cnt+' selected';
+    if(hdr){ hdr.textContent = cnt+' selected'; hdr.style.opacity='1'; }
+  } else {
+    if(bar){ bar.style.maxHeight='0'; bar.style.opacity='0'; }
+    if(hdr) hdr.style.opacity='0';
+  }
+}
+
+function resetIns6() {
+  ins6Sel.clear();
+  [1,2].forEach(n => {
+    const item = document.getElementById('ins6Item'+n);
+    const circ = document.getElementById('ins6Circ'+n);
+    if(item){ item.style.background=''; item.style.borderColor=''; }
+    if(circ){ circ.style.background=''; circ.style.borderColor='rgba(255,255,255,0.2)'; circ.innerHTML=''; }
+  });
+  const bar = document.getElementById('ins6ActionBar');
+  if(bar){ bar.style.maxHeight='0'; bar.style.opacity='0'; }
+  const hdr = document.getElementById('ins6SelHeader');
+  if(hdr) hdr.style.opacity='0';
+  const arrow  = document.getElementById('ins6Arrow');
+  const target = document.getElementById('ins6Target');
+  if(arrow)  arrow.style.opacity  = '0';
+  if(target) target.style.opacity = '0';
+  ['ins6Img1','ins6Img2'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ el.style.opacity='0'; el.style.transform='scale(0.7) translateY(6px)'; }
+  });
+  const lbl2 = document.getElementById('ins6InsertedLabel');
+  if(lbl2) lbl2.style.opacity='0';
+  const ph = document.getElementById('ins6ChatPlaceholder');
+  if(ph) ph.style.opacity='1';
+  const insertBtn = document.getElementById('ins6InsertBtn');
+  if(insertBtn) insertBtn.style.background = 'var(--lime)';
+}
+
+async function animIns6() {
+  if(ins6Running) return;
+  ins6Running = true;
+  resetIns6();
+
+  const cur       = 'ins6Cursor';
+  const circ1     = document.getElementById('ins6Circ1');
+  const circ2     = document.getElementById('ins6Circ2');
+  const insertBtn = document.getElementById('ins6InsertBtn');
+  const arrow     = document.getElementById('ins6Arrow');
+  const target    = document.getElementById('ins6Target');
+  const img1      = document.getElementById('ins6Img1');
+  const img2      = document.getElementById('ins6Img2');
+  const lbl2      = document.getElementById('ins6InsertedLabel');
+  const ph        = document.getElementById('ins6ChatPlaceholder');
+  if(!circ1){ ins6Running=false; return; }
+
+  // Step 1: select item 1
+  await moveCursorToEl(cur, circ1, 0);
+  await clickCursor(cur, 300);
+  setIns6Item(1, true);
+
+  // Step 2: select item 2
+  await moveCursorToEl(cur, circ2, 450);
+  await clickCursor(cur, 300);
+  setIns6Item(2, true);
+
+  // Step 3: move to Insert button, click
+  await moveCursorToEl(cur, insertBtn, 600);
+  if(insertBtn) insertBtn.style.background = '#d8ff70';
+  await clickCursor(cur, 300);
+  if(insertBtn) insertBtn.style.background = 'var(--lime)';
+
+  // Step 4: cursor disappears, arrow + target appear
+  await hideCursor(cur, 200);
+  if(arrow)  arrow.style.opacity  = '1';
+  await new Promise(r => setTimeout(r, 350));
+  if(target) target.style.opacity = '1';
+  if(ph)     ph.style.opacity     = '0.3';
+
+  // Step 5: images pop in one by one
+  await new Promise(r => setTimeout(r, 480));
+  if(img1){ img1.style.opacity='1'; img1.style.transform='scale(1) translateY(0)'; }
+  await new Promise(r => setTimeout(r, 220));
+  if(img2){ img2.style.opacity='1'; img2.style.transform='scale(1) translateY(0)'; }
+  await new Promise(r => setTimeout(r, 450));
+  if(lbl2){ lbl2.textContent='2 images sent ✓'; lbl2.style.opacity='1'; }
+
+  // Reset after hold
+  setTimeout(() => {
+    resetIns6();
+    ins6Running = false;
+  }, 4200);
+}
+
+// ── fshow row 7: Prompt Bundles ───────────────────────────────────────────────
+let b7Running = false;
+let b7Sel = new Set();
+
+function setB7Item(n, on) {
+  const item = document.getElementById('b7Item'+n);
+  const circ = document.getElementById('b7Circ'+n);
+  if(!item || !circ) return;
+  if(on) {
+    b7Sel.add(n);
+    circ.style.background  = 'var(--lime)';
+    circ.style.borderColor = 'var(--lime)';
+    circ.innerHTML = '<svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#141414" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 5 4 7 8 3"/></svg>';
+    item.style.background  = 'rgba(200,240,96,0.05)';
+    item.style.borderLeft  = '3px solid rgba(200,240,96,0.35)';
+  } else {
+    b7Sel.delete(n);
+    circ.style.background  = '';
+    circ.style.borderColor = 'rgba(255,255,255,0.2)';
+    circ.innerHTML = '';
+    item.style.background  = '';
+    item.style.borderLeft  = '';
+  }
+  const bar  = document.getElementById('b7ActionBar');
+  const cnt  = document.getElementById('b7SelCount');
+  if(b7Sel.size > 0) {
+    bar.style.transform = 'translateY(0)';
+    bar.style.opacity   = '1';
+    if(cnt) cnt.textContent = b7Sel.size + ' selected';
+  } else {
+    bar.style.transform = 'translateY(100%)';
+    bar.style.opacity   = '0';
+    if(cnt) cnt.textContent = '';
+  }
+}
+
+function resetB7() {
+  b7Sel.clear();
+  [1,2,3].forEach(n => {
+    const item = document.getElementById('b7Item'+n);
+    const circ = document.getElementById('b7Circ'+n);
+    if(item){ item.style.background=''; item.style.borderLeft=''; }
+    if(circ){ circ.style.background=''; circ.style.borderColor='rgba(255,255,255,0.2)'; circ.innerHTML=''; }
+  });
+  const bar = document.getElementById('b7ActionBar');
+  if(bar){ bar.style.transform='translateY(100%)'; bar.style.opacity='0'; }
+  const toast = document.getElementById('b7Toast');
+  if(toast) toast.style.opacity='0';
+  const claudeBtn = document.getElementById('b7ClaudeBtn');
+  if(claudeBtn) claudeBtn.style.background='var(--lime)';
+}
+
+async function animBundle7() {
+  if(b7Running) return;
+  b7Running = true;
+  resetB7();
+  const cur       = 'b7Cursor';
+  const circ1     = document.getElementById('b7Circ1');
+  const circ2     = document.getElementById('b7Circ2');
+  const claudeBtn = document.getElementById('b7ClaudeBtn');
+  const toast     = document.getElementById('b7Toast');
+  const toastTxt  = document.getElementById('b7ToastTxt');
+  if(!circ1){ b7Running=false; return; }
+  await moveCursorToEl(cur, circ1, 0);
+  await clickCursor(cur, 300);
+  setB7Item(1, true);
+  await moveCursorToEl(cur, circ2, 450);
+  await clickCursor(cur, 300);
+  setB7Item(2, true);
+  await moveCursorToEl(cur, claudeBtn, 600);
+  if(claudeBtn) claudeBtn.style.background='#d8ff70';
+  await clickCursor(cur, 300);
+  if(claudeBtn) claudeBtn.style.background='var(--lime)';
+  if(toastTxt) toastTxt.textContent='2 items sent to Claude ✓';
+  if(toast) toast.style.opacity='1';
+  await hideCursor(cur, 400);
+  setTimeout(() => { resetB7(); b7Running=false; }, 3800);
+}
+
+// ── fshow row 8: Send to AI ────────────────────────────────────────────────────
+let s8Running = false;
+let s8Sel = new Set();
+
+function setS8Item(n, on) {
+  const item = document.getElementById('s8Item'+n);
+  const circ = document.getElementById('s8Circ'+n);
+  if(!item || !circ) return;
+  if(on) {
+    s8Sel.add(n);
+    circ.style.background  = 'var(--lime)';
+    circ.style.borderColor = 'var(--lime)';
+    circ.innerHTML = '<svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#141414" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 5 4 7 8 3"/></svg>';
+    item.style.background  = 'rgba(200,240,96,0.05)';
+    item.style.borderLeft  = '3px solid rgba(200,240,96,0.3)';
+  } else {
+    s8Sel.delete(n);
+    circ.style.background  = '';
+    circ.style.borderColor = 'rgba(255,255,255,0.2)';
+    circ.innerHTML = '';
+    item.style.background  = '';
+    item.style.borderLeft  = '';
+  }
+  const bar = document.getElementById('s8ActionBar');
+  const lbl = document.getElementById('s8SelLabel');
+  const hdr = document.getElementById('s8SelHdr');
+  if(s8Sel.size > 0) {
+    if(bar){ bar.style.maxHeight='44px'; bar.style.opacity='1'; }
+    if(lbl) lbl.textContent = s8Sel.size + ' selected';
+    if(hdr){ hdr.textContent = s8Sel.size + ' selected'; hdr.style.opacity='1'; }
+  } else {
+    if(bar){ bar.style.maxHeight='0'; bar.style.opacity='0'; }
+    if(hdr) hdr.style.opacity='0';
+  }
+}
+
+function resetS8() {
+  s8Sel.clear();
+  [1,2].forEach(n => {
+    const item = document.getElementById('s8Item'+n);
+    const circ = document.getElementById('s8Circ'+n);
+    if(item){ item.style.background=''; item.style.borderLeft=''; }
+    if(circ){ circ.style.background=''; circ.style.borderColor='rgba(255,255,255,0.2)'; circ.innerHTML=''; }
+  });
+  const bar = document.getElementById('s8ActionBar');
+  if(bar){ bar.style.maxHeight='0'; bar.style.opacity='0'; }
+  const hdr = document.getElementById('s8SelHdr');
+  if(hdr) hdr.style.opacity='0';
+  const arrow = document.getElementById('s8Arrow');
+  if(arrow) arrow.style.opacity='0';
+  const target = document.getElementById('s8Target');
+  if(target) target.style.opacity='0';
+  const img = document.getElementById('s8InjectImg');
+  if(img){ img.style.opacity='0'; img.style.transform='translateY(6px) scale(0.95)'; }
+  const txt = document.getElementById('s8InjectText');
+  if(txt) txt.style.opacity='0';
+  const ready = document.getElementById('s8ReadyBar');
+  if(ready) ready.style.opacity='0';
+  const btn = document.getElementById('s8ChatGPTBtn');
+  if(btn) btn.style.background='var(--lime)';
+}
+
+async function animSend8() {
+  if(s8Running) return;
+  s8Running = true;
+  resetS8();
+  const cur        = 's8Cursor';
+  const circ1      = document.getElementById('s8Circ1');
+  const circ2      = document.getElementById('s8Circ2');
+  const sendBtn    = document.getElementById('s8ChatGPTBtn');
+  const arrow      = document.getElementById('s8Arrow');
+  const target     = document.getElementById('s8Target');
+  const injectImg  = document.getElementById('s8InjectImg');
+  const injectText = document.getElementById('s8InjectText');
+  const readyBar   = document.getElementById('s8ReadyBar');
+  if(!circ1){ s8Running=false; return; }
+  await moveCursorToEl(cur, circ1, 0);
+  await clickCursor(cur, 300);
+  setS8Item(1, true);
+  await moveCursorToEl(cur, circ2, 450);
+  await clickCursor(cur, 300);
+  setS8Item(2, true);
+  await moveCursorToEl(cur, sendBtn, 600);
+  if(sendBtn) sendBtn.style.background='#d8ff70';
+  await clickCursor(cur, 300);
+  if(sendBtn) sendBtn.style.background='var(--lime)';
+  await hideCursor(cur, 200);
+  if(arrow) arrow.style.opacity='1';
+  await new Promise(r => setTimeout(r, 380));
+  if(target) target.style.opacity='1';
+  await new Promise(r => setTimeout(r, 500));
+  if(injectImg){ injectImg.style.opacity='1'; injectImg.style.transform='translateY(0) scale(1)'; }
+  await new Promise(r => setTimeout(r, 320));
+  if(injectText) injectText.style.opacity='1';
+  await new Promise(r => setTimeout(r, 420));
+  if(readyBar) readyBar.style.opacity='1';
+  setTimeout(() => { resetS8(); s8Running=false; }, 4200);
+}
+
+// ── Panel animator ────────────────────────────────────────────────────────────
+function startPanelAnim(n) {
+  Object.values(panelIntervals).forEach(id => clearInterval(id));
+  if(n === 0) {
+    runCap0();
+    panelIntervals[0] = setInterval(runCap0, 2800);
+  } else if(n === 1) {
+    fav1Running = false;
+    setTimeout(animFav1, 600);
+    panelIntervals[1] = setInterval(animFav1, 6000);
+  } else if(n === 2) {
+    srch2Running = false;
+    setTimeout(animSearch2, 600);
+    panelIntervals[2] = setInterval(animSearch2, 7000);
+  } else if(n === 3) {
+    del3State = 'idle';
+    setTimeout(animDel3, 600);
+    panelIntervals[3] = setInterval(animDel3, 7000);
+  } else if(n === 4) {
+    img4Running = false;
+    setTimeout(animImg4, 600);
+    panelIntervals[4] = setInterval(animImg4, 7000);
+  } else if(n === 5) {
+    bulk5Running = false;
+    setTimeout(animBulk5, 600);
+    panelIntervals[5] = setInterval(animBulk5, 8000);
+  } else if(n === 6) {
+    ins6Running = false;
+    setTimeout(animIns6, 600);
+    panelIntervals[6] = setInterval(animIns6, 9000);
+  } else if(n === 7) {
+    b7Running = false;
+    setTimeout(animBundle7, 600);
+    panelIntervals[7] = setInterval(animBundle7, 8000);
+  } else if(n === 8) {
+    s8Running = false;
+    setTimeout(animSend8, 600);
+    panelIntervals[8] = setInterval(animSend8, 9000);
+  }
+}
+
+// Start panel 0 on load
+startPanelAnim(0);
+
+// ── Scroll-triggered animations for feature showcase rows ───────────────────
+const animRowObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const idx = parseInt(e.target.dataset.animIdx);
+      if (!isNaN(idx)) {
+        Object.values(panelIntervals).forEach(id => clearInterval(id));
+        startPanelAnim(idx);
+      }
+    }
+  });
+}, { threshold: 0.4 });
+document.querySelectorAll('[data-anim-idx]').forEach(el => animRowObs.observe(el));
+
+// ── Nav scroll effect ───────────────────────────────────────────────────────
+const navEl = document.querySelector('nav');
+window.addEventListener('scroll', () => {
+  navEl.classList.toggle('scrolled', window.scrollY > 12);
+}, { passive: true });
+
+// ── toggleImgExpand — manual click handler for image preview item ──────────
+function toggleImgExpand() {
+  const exp    = document.getElementById('imgExpanded');
+  const status = document.getElementById('imgPreviewStatus');
+  if (!exp) return;
+  const open = exp.style.display === 'block';
+  exp.style.display = open ? 'none' : 'block';
+  if (status) status.textContent = open ? 'preview ready · click to expand' : 'expanded · click to collapse';
+}
+
+// ── Count-up animations for stats ──────────────────────────────────────────
+function animCountUp(el, renderFn, duration) {
+  const t0 = performance.now();
+  const tick = (now) => {
+    const p = Math.min((now - t0) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = renderFn(ease);
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+const statsObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const nums = e.target.querySelectorAll('.stat-num');
+    if (nums[0]) animCountUp(nums[0], t => '~' + Math.round(80 * t) + 'ms', 1400);
+    if (nums[1]) animCountUp(nums[1], t => String(Math.round(5 * t)), 1000);
+    statsObserver.unobserve(e.target);
+  });
+}, { threshold: 0.6 });
+document.querySelectorAll('.stat-grid').forEach(el => statsObserver.observe(el));
+</script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});</script>
+</body>
+</html>
