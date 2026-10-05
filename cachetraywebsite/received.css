@@ -2,16 +2,34 @@
 * { box-sizing: border-box; } body { margin: 0; } [hidden] { display: none !important; }
 header { display: flex; align-items: center; gap: 10px; padding: 18px 20px; border-bottom: 1px solid #2b2b31; }
 header img { border-radius: 8px; } header span { margin-left: auto; color: #a5a5aa; font-size: 14px; }
-.install-app { margin-left: 12px; }
+.install-app { margin-left: auto; }
+.install-guide { margin-bottom: 16px; padding: 14px; border: 1px solid #45454f; border-radius: 12px; background: #1d1d23; }
+.install-guide p { margin: 0 0 10px; font-size: 13px; }
+.install-guide button { padding: 7px 11px; }
 main { max-width: 620px; margin: auto; padding: 24px 18px env(safe-area-inset-bottom); }
 h1 { margin: 0 0 6px; font-size: 26px; } p { color: #aaaab2; line-height: 1.45; }
 .heading { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
+.pair-actions { display: flex; flex: none; gap: 6px; }
+.pair-actions button { padding: 9px 10px; font-size: 12px; white-space: nowrap; }
+.pair-actions #scanMacQr { border-color: #6c8550; color: #c8fb69; }
+.pair-actions #scanMacQr:hover { background: #314023; }
+.pair-actions .pair-words { color: #a8a8b0; }
 .heading p { margin: 0 0 20px; font-size: 13px; }
 .heading #deviceLabel { margin-bottom: 5px; }
 .pair-status { display: flex; align-items: center; gap: 7px; color: #9c9ca5; }
 .pair-status::before { content: ''; width: 8px; height: 8px; flex: none; border-radius: 50%; background: #777780; }
 .pair-status.connected { color: #80e6ba; }
+.plan-notice { margin: 4px 0 12px; color: #c8fb69; font-size: 12px; }
+.phone-release { margin-bottom: 18px; color: #aaaab2; font-size: 12px; }
+.phone-release p { font-size: 12px; margin: 8px 0; }
+.phone-release summary { cursor: pointer; }
 .pair-status.connected::before { background: #34d399; box-shadow: 0 0 0 3px #34d39920; }
+.manage-macs { display: block; padding: 0; margin: -10px 0 18px; background: transparent; color: #aaaab2; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.connections-panel { padding: 12px; margin-bottom: 18px; border: 1px solid #34343d; border-radius: 12px; background: #1d1d23; }
+.connections-panel p { margin: 0 0 10px; font-size: 12px; }
+.mac-connection { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; font-size: 13px; }
+.mac-connection + .mac-connection { border-top: 1px solid #34343d; }
+.mac-connection button { flex: none; padding: 7px 9px; font-size: 12px; }
 label { display: block; margin: 15px 0 7px; color: #bbb; }
 input,button,.button { font: inherit; border-radius: 10px; }
 input { width: 100%; padding: 12px; color: white; background: #1e1e24; border: 1px solid #45454f; }
@@ -19,6 +37,14 @@ button,.button { padding: 10px 14px; background: #c8fb69; color: #151515; border
 form button { margin-top: 14px; width: 100%; }
 .secondary { background: #25252c; color: #eee; border: 1px solid #44444d; font-size: 13px; }
 #pairBox { background: #1d1d23; border: 1px solid #34343d; border-radius: 14px; padding: 16px; margin: 10px 0; }
+.scan-overlay { position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; padding: 18px; background: #08080bef; }
+.scan-dialog { width: min(100%, 420px); padding: 18px; border: 1px solid #484850; border-radius: 18px; background: #1d1d23; text-align: center; }
+.scan-dialog h2 { margin: 0 0 6px; font-size: 20px; }
+.scan-dialog p { margin: 0 0 12px; font-size: 13px; }
+.scan-dialog video { display: block; width: 100%; max-height: 55vh; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; background: #101014; }
+.scan-dialog #scanStatus { min-height: 20px; margin: 12px 0; }
+.scan-dialog button { width: 100%; }
+@media (max-width: 380px) { .heading h1 { font-size: 24px; } .pair-actions button { padding: 8px; font-size: 11px; } }
 .pair-code-row { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 14px 0 8px; }
 .code { min-width: 0; overflow-wrap: anywhere; letter-spacing: 0.3px; font: 700 clamp(15px, 4.3vw, 18px) ui-monospace,monospace; color: #c8fb69; margin: 0; padding: 13px 14px; border: 1px solid #38383f; border-radius: 10px; background: #15151a; }
 .copy-code { min-width: 116px; display: inline-flex; justify-content: center; align-items: center; gap: 8px; transition: background .18s,border-color .18s,color .18s,transform .18s; }
@@ -73,6 +99,10 @@ form button { margin-top: 14px; width: 100%; }
 .clip-actions { display: flex; align-items: center; gap: 6px; }
 .clip-card .clip-share { display: grid; place-items: center; width: 36px; height: 36px; padding: 8px; }
 .clip-share svg { width: 18px; height: 18px; }
+.clip-card .clip-action-icon { display: grid; place-items: center; width: 36px; height: 36px; padding: 8px; flex: none; }
+.clip-action-icon svg { width: 18px; height: 18px; }
+.clip-actions a { border: 1px solid #45454f; border-radius: 10px; color: #f6f6f7; text-decoration: none; }
+.clip-actions a:hover { border-color: #c8fb69; color: #c8fb69; }
 @media (max-width: 390px) { .clip-card { grid-template-columns: 30px minmax(0,1fr) auto; gap: 7px; padding: 10px; } .clip-icon { width: 30px; height: 30px; } .clip-card button { padding: 8px; } .clip-card .clip-share { width: 34px; height: 34px; } }
 #items { display: grid; gap: 12px; }
 .items-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

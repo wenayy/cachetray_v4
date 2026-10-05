@@ -1061,6 +1061,18 @@ button {
   color: var(--lime);
 }
 
+.storage-health-link {
+  margin-left: auto;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.storage-health-link:hover { color: var(--lime); }
+
 .trust-divider {
   width: 0.5px;
   height: 12px;
@@ -1299,6 +1311,7 @@ a:hover {
   align-items: center;
   gap: 5px;
 }
+.app-bar-right .shortcut-hint { display: none; }
 
 .icon-action {
   position: relative;
@@ -1705,6 +1718,8 @@ html.light .bmc-btn:hover {
 }
 
 .cloud-sync-btn.active .cloud-status-dot { background: var(--green); }
+.cloud-sync-btn.phone-connected.active { width: 27px; gap: 0; padding: 0; color: var(--green); background: rgba(52, 211, 153, 0.1); border-color: rgba(52, 211, 153, 0.35); }
+.phone-connect-label { display: none !important; }
 .cloud-sync-btn.syncing .cloud-status-dot { background: var(--amber); animation: cloudPulse 0.8s ease-in-out infinite alternate; }
 
 @keyframes cloudPulse { to { opacity: 0.35; } }
@@ -1964,12 +1979,60 @@ html.light .add-input::placeholder {
 .modal-btn.cloud-primary:hover { filter: brightness(1.06); }
 .modal-btn:disabled { opacity: 0.5; cursor: wait; }
 
-.phone-transfer-modal { width: min(340px, calc(100vw - 28px)); }
+.phone-transfer-modal { box-sizing: border-box; display: flex; flex-direction: column; width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); padding: 0; overflow: hidden; }
+.phone-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); flex: none; }
+.phone-modal-header .modal-title { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.phone-modal-header button { flex: none; }
+.phone-modal-body { padding: 16px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.phone-modal-body .modal-sub { margin-bottom: 12px; }
+.phone-install-guide { display: grid; gap: 6px; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.phone-install-guide p { margin: 0; color: var(--text); font-size: 12px; }
+.phone-install-guide[hidden], #phoneConnectStep[hidden] { display: none; }
+.phone-step-title { margin: 0 0 8px; font-size: 12px; color: var(--text); }
+.phone-step-back { margin-top: 14px; padding: 0; background: transparent; border: 0; cursor: pointer; }
+.phone-install-guide .cloud-primary { margin-left: 0; }
+.phone-install-guide small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.phone-install-link { width: fit-content; color: var(--blue); font-size: 12px; line-height: 1.5; text-decoration: none; }
+.phone-install-link:hover { text-decoration: underline; }
+.phone-install-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 3px; }
+.phone-qr-actions { display: flex; gap: 8px; margin: 12px 0; }
+.phone-qr-actions .modal-btn { margin-left: 0; }
+.phone-plan-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 9px; border: 1px solid var(--line); border-radius: 8px; font-size: 10px; }
+.phone-plan-row span { flex: 1; }
+.phone-plan-row button { flex: none; }
+.billing-modal { width: min(360px, calc(100vw - 28px)); max-height: calc(100vh - 28px); overflow-y: auto; }
+.billing-plan-button,.billing-news-button { border: 1px solid var(--line); border-radius: 7px; padding: 5px 7px; background: transparent; color: var(--lime); font: inherit; font-size: 10px; cursor: pointer; flex-shrink: 0; }
+.billing-plan-button { background: var(--lime-soft); border-color: var(--lime); font-weight: 700; white-space: nowrap; }
+.phone-already-sent { color: var(--green); }
+.billing-news-button.has-update { box-shadow: 0 0 0 2px var(--lime); }
+.billing-summary { color: var(--lime); font-size: 12px; }
+.billing-benefits,.release-notes { color: var(--text); font-size: 11px; line-height: 1.7; }
+.billing-key-actions { display: flex; gap: 8px; margin-top: 8px; }
+.billing-saved { display: flex; gap: 7px; align-items: center; margin: 10px 0; color: var(--text); font-size: 11px; }
+.billing-saved input { width: auto; }
+.billing-restore { margin-top: 12px; font-size: 11px; }
+#billingRecovery label,.billing-restore label { display: block; font-size: 11px; margin: 8px 0; }
+#billingRecoveryKey { font-family: monospace; font-size: 10px; }
+.phone-qr-area { margin: 12px 0; padding: 12px; border-radius: 10px; background: white; text-align: center; }
+.phone-qr-area svg { display: block; width: min(100%, 180px); height: auto; margin: auto; }
+.phone-qr-area p { margin: 8px 0 0; color: #333; font-size: 11px; line-height: 1.4; }
+.phone-manual-pair { margin-top: 12px; color: var(--muted); font-size: 10px; }
+.phone-manual-pair summary { cursor: pointer; }
+.phone-manual-pair #phonePairBtn { margin-top: 8px; }
 .phone-pair-label { display: block; margin: 12px 0 5px; color: var(--muted); font-size: 10px; }
 .phone-pair-input { box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--field-bg); color: var(--text); font: 12px ui-monospace, monospace; }
 .phone-device-choice { display: block; width: 100%; margin: 6px 0; padding: 10px; text-align: left; color: var(--text); background: var(--field-bg); border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer; }
 .phone-device-choice:hover { border-color: var(--blue); }
+.phone-device-row { display: flex; align-items: center; gap: 6px; }
+.phone-device-row .phone-device-choice { flex: 1; min-width: 0; font-size: 10px; }
+.phone-device-row span.phone-device-choice { cursor: default; }
+.phone-disconnect { flex: none; border: 0; background: transparent; color: var(--muted); font-size: 9px; cursor: pointer; }
+.phone-disconnect:hover { color: var(--red); }
 .phone-transfer-error { min-height: 16px; margin-top: 8px; color: var(--red); font-size: 10px; overflow-wrap: anywhere; }
+.phone-image-limit { margin-top: 12px; padding: 12px; border: 1px solid var(--lime); border-radius: 10px; background: var(--lime-soft); color: var(--text); font-size: 12px; }
+.phone-image-limit[hidden] { display: none; }
+.phone-image-limit p { margin: 8px 0 12px; color: var(--muted); line-height: 1.6; }
+.phone-image-limit .modal-btn { margin-left: 0; }
 .phone-send-btn { margin-left: 5px; white-space: nowrap; }
 .grid-card-actions .phone-send-btn { font-size: 9px; }
 
@@ -2054,6 +2117,14 @@ html.light .grid-card.selected {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+.grid-card-thumb.missing {
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+  font-size: 11px;
+  text-align: center;
+  padding: 10px;
 }
 
 .grid-card-foot {

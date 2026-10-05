@@ -227,11 +227,13 @@ footer {
     <li>No analytics, telemetry, or usage statistics</li>
     <li>No crash reports or error logs sent anywhere</li>
     <li>No analytics-based device tracking. The transfer backend processes a random device ID, and Cloudflare may process request IP addresses in its service logs.</li>
-    <li>No payment or financial information</li>
+    <li>We do not receive or store your card details. Optional Pro payments are processed by Dodo Payments.</li>
   </ul>
 
   <h2>Where your data goes</h2>
   <p><strong>Local by default.</strong> If you use Send to Phone, the selected image is uploaded directly from your extension to a private Cloudflare R2 bucket using a short-lived upload URL. A Cloudflare Worker/D1 backend stores the filename, MIME type, size, device IDs, and transfer times. The paired phone can request a short-lived download URL. The original image remains in local IndexedDB. The transfer is hidden after 24 hours; R2 lifecycle deletion may take longer. Optional Google cloud sync is a separate feature using Firebase and is off unless you sign in.</p>
+  <p>Pairing your phone also enables temporary synchronization of recent text, links, code and tasks. These clips are stored in Cloudflare D1 for up to 24 hours, within your plan limits. This does not upload your local images automatically.</p>
+  <p><strong>Optional Pro billing.</strong> Dodo Payments processes checkout, subscription management and payment information. Our backend stores checkout, subscription and provider customer IDs, subscription status and renewal dates, your random extension device ID, and a hash of your recovery key. Keep your recovery key private: it can restore your subscription to another installation. Billing records are separate from temporary transfers and are not automatically removed after 24 hours.</p>
   <p>Separately, when you use the right-click "Save image" feature, your browser may fetch the image URL to save it locally. This is a standard browser action — not an upload to our transfer service.</p>
 
   <h2>Permissions and why we need them</h2>

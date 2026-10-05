@@ -23,11 +23,10 @@
             <span class="capture-dot"></span>
             <span class="capture-label" id="captureLabel">capturing</span>
           </button>
-          <a class="bmc-btn icon-action" href="https://buymeacoffee.com/vinaycjoshz" target="_blank" title="Support CacheTray" aria-label="Support CacheTray" data-tooltip="Support">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-          </a>
-          <button class="cloud-sync-btn icon-action" id="cloudSyncBtn" type="button" title="Cloud sync is off" aria-label="Cloud sync" data-tooltip="Sync">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H7a5 5 0 1 1 .8-9.94A7 7 0 0 1 21 12.5 3.5 3.5 0 0 1 17.5 19z"/><path d="M12 12v5M9.8 14.2 12 12l2.2 2.2"/></svg>
+          <button id="goProBtn" class="billing-plan-button" type="button" title="CacheTray Pro · $4.99/month">Go Pro</button>
+          <button class="cloud-sync-btn icon-action" id="phoneConnectBtn" type="button" title="Connect phone" aria-label="Connect phone" data-tooltip="Phone">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+            <span class="phone-connect-label">Connected</span>
             <span class="cloud-status-dot" aria-hidden="true"></span>
           </button>
           <button class="theme-toggle-btn icon-action" id="themeToggleBtn" type="button" title="Switch to light mode" aria-label="Switch to light mode" aria-pressed="false" data-tooltip="Theme">
@@ -99,6 +98,7 @@
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         Local-only by default
       </span>
+      <button class="storage-health-link" id="imageHealthBtn" type="button" title="Check which local images are still available">Check images</button>
     </div>
 
     <div class="sel-bar" id="selBar">
@@ -125,28 +125,6 @@
       <button class="undo-btn" id="undoBtn" type="button">undo</button>
     </div>
 
-  </div>
-
-  <!-- Optional Firebase cloud sync -->
-  <div class="modal-overlay" id="cloudSyncModal">
-    <div class="modal cloud-modal">
-      <div class="cloud-modal-head">
-        <div>
-          <div class="modal-title">Cloud sync <span class="preview-pill">preview</span></div>
-          <div class="modal-sub" id="cloudSyncSummary">Your clips stay local unless you turn sync on.</div>
-        </div>
-        <button class="cloud-modal-close" id="cloudSyncClose" type="button" aria-label="Close">×</button>
-      </div>
-      <div class="cloud-user hidden" id="cloudUser"></div>
-      <div class="cloud-notice" id="cloudSyncNotice">Text, code, links, tasks, and workspaces sync. Images stay on this device in the preview.</div>
-      <div class="cloud-error hidden" id="cloudSyncError"></div>
-      <div class="cloud-setup hidden" id="cloudSyncSetup"></div>
-      <div class="modal-actions cloud-actions">
-        <button class="modal-btn cancel hidden" id="cloudSignOutBtn" type="button">Sign out</button>
-        <button class="modal-btn cancel hidden" id="cloudSyncNowBtn" type="button">Sync now</button>
-        <button class="modal-btn cloud-primary" id="cloudSignInBtn" type="button" disabled>Checking setup…</button>
-      </div>
-    </div>
   </div>
 
   <!-- Grid image preview modal -->
@@ -182,8 +160,9 @@
   </div>
 
   <script src="shared.js"></script>
+  <script src="qr-code.js"></script>
   <script src="transfer-ui.js"></script>
+  <script src="billing-ui.js"></script>
   <script src="popup.js"></script>
-  <script src="cloud-ui.js"></script>
 </body>
 </html>

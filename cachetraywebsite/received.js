@@ -4,6 +4,11 @@
   const VIEW_KEY = 'cachetray_phone_inbox_view_v1';
   const byId = id => document.getElementById(id);
   const base = String(window.CACHE_TRAY_TRANSFER_API || '').replace(/\/$/, '');
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const phoneName = isIOS ? 'iPhone' : 'Android phone';
+  const phonePlatform = isIOS ? 'ios-pwa' : 'android-pwa';
   let device = JSON.parse(localStorage.getItem(KEY) || 'null');
   let pollTimer = null;
   let clipTimer = null;
@@ -13,6 +18,9 @@
   let copyResetTimer = null;
   let pollingError = false;
   let toastTimer = null;
+  let scanStream = null;
+  let scanFrame = null;
+  let lastScanAt = 0;
   const imageCache = new Map();
   const imageRequests = new Map();
   const deletedIds = new Set();
@@ -23,6 +31,9 @@
   let section = 'images';
   let clipFilter = 'all';
   let lastClips = [];
+  let pairedMacs = [];
+  let pollBusy = false;
+  let pairingRevision = 0;
   const CLIP_ICONS = {
     text: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/>',
     link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
@@ -46,14 +57,58 @@
     badge.textContent = count ? String(count) : '';
   }
   function updatePairingStatus(macs) {
-    const count = macs.length;
+    const uniqueMacs = [...new Map(macs.map(mac => [mac.id, mac])).values()];
+    const changed = JSON.stringify(uniqueMacs) !== JSON.stringify(pairedMacs);
+    pairedMacs = uniqueMacs;
+    const active = pairedMacs.filter(mac => mac.online === true);
+    const count = active.length;
     const status = byId('pairStatus');
     status.classList.toggle('connected', count > 0);
     status.textContent = count === 1
-      ? `Connected to ${macs[0].name || 'Mac'} ✓`
-      : count > 1 ? `Connected to ${count} Macs ✓` : 'No Mac connected yet';
-    byId('pairToggle').textContent = count ? 'Add Mac' : 'Pair Mac';
+      ? `Connected to ${active[0].name || 'Mac'} ✓`
+      : count > 1 ? 'Connected ✓'
+        : pairedMacs.length ? 'Mac paired · offline' : 'No Mac connected';
+    byId('scanMacQr').textContent = pairedMacs.length ? 'Add Mac' : 'Scan QR';
+    byId('pairToggle').setAttribute('aria-label', pairedMacs.length ? 'Pair another Mac with words' : 'Pair Mac with words');
+    byId('manageMacs').hidden = pairedMacs.length === 0;
+    if (!pairedMacs.length) {
+      byId('connectionsPanel').hidden = true;
+      byId('manageMacs').setAttribute('aria-expanded', 'false');
+    }
+    if (changed) renderConnections();
   }
+  function connectionUnavailable(message) {
+    const status = byId('pairStatus');
+    status.classList.remove('connected');
+    status.textContent = message;
+  }
+  function renderConnections() {
+    const container = byId('macConnections');
+    container.replaceChildren();
+    for (const mac of pairedMacs) {
+      const row = document.createElement('div'); row.className = 'mac-connection';
+      const label = document.createElement('span');
+      label.textContent = `${mac.name || 'Mac'} · ${mac.online ? 'Active' : 'Offline / old pairing'}`;
+      const remove = document.createElement('button'); remove.type = 'button';
+      remove.className = 'secondary'; remove.textContent = 'Disconnect';
+      remove.onclick = async () => {
+        if (!confirm(`Disconnect this ${mac.online ? 'Mac' : 'old Mac pairing'}? Images already received and your Mac’s local items stay untouched.`)) return;
+        remove.disabled = true;
+        try {
+          await api(`/api/devices/${encodeURIComponent(device.deviceId)}/pairings/${encodeURIComponent(mac.id)}`, { method: 'DELETE' });
+          pairingRevision++;
+          updatePairingStatus(pairedMacs.filter(item => item.id !== mac.id));
+          notify('Mac disconnected', 'success');
+          pollClips();
+        } catch (err) { notify(err.message); remove.disabled = false; }
+      };
+      row.append(label, remove); container.appendChild(row);
+    }
+  }
+  byId('manageMacs').onclick = () => {
+    byId('connectionsPanel').hidden = !byId('connectionsPanel').hidden;
+    byId('manageMacs').setAttribute('aria-expanded', String(!byId('connectionsPanel').hidden));
+  };
 
   function showError(message) {
     byId('error').textContent = message || '';
@@ -77,16 +132,21 @@
   }
   async function api(path, options = {}) {
     if (!base.startsWith('https://') || base.includes('REPLACE_WITH')) throw new Error('Transfer API is not configured yet');
-    const response = await fetch(base + path, {
-      ...options,
-      headers: { 'Content-Type': 'application/json', ...(device ? { Authorization: `Bearer ${device.deviceToken}` } : {}), ...options.headers },
-      cache: 'no-store'
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
-    return body;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      const response = await fetch(base + path, {
+        ...options, signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', ...(device ? { Authorization: `Bearer ${device.deviceToken}` } : {}), ...options.headers },
+        cache: 'no-store'
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+      return body;
+    } finally { clearTimeout(timeout); }
   }
   function applyDevice() {
+    byId('deviceName').value = phoneName;
     byId('setup').hidden = Boolean(device);
     byId('inbox').hidden = !device;
     if (device) {
@@ -95,40 +155,94 @@
       startPolling();
     }
   }
-  async function connectFromQr() {
-    const connectId = new URLSearchParams(location.hash.slice(1)).get('connect');
+  async function connectFromQr(scannedId) {
+    const connectId = scannedId || new URLSearchParams(location.hash.slice(1)).get('connect');
     if (!connectId) return;
-    history.replaceState(null, '', location.pathname + location.search);
+    if (!scannedId) history.replaceState(null, '', location.pathname + location.search);
     if (!/^[a-f0-9]{64}$/.test(connectId)) { notify('This connection link is invalid.'); return; }
     try {
       if (!device) {
-        device = await api('/api/devices/register', { method: 'POST', body: JSON.stringify({ name: 'Android phone' }) });
+        device = await api('/api/devices/register', { method: 'POST', body: JSON.stringify({ name: phoneName, platform: phonePlatform }) });
         localStorage.setItem(KEY, JSON.stringify(device));
         applyDevice();
       }
       await api('/api/connect/claim', { method: 'POST', body: JSON.stringify({ connectId }) });
       byId('pairBox').hidden = true;
-      updatePairingStatus([{ name: 'Mac Chrome' }]);
+      pairingRevision++;
+      connectionUnavailable('Paired · checking Mac…');
       notify('Phone connected! Your recent clips will appear here.', 'success');
       setSection('clips');
-      pollClips();
+      poll(); pollClips();
     } catch (err) { showError(err.message); notify(`Could not connect: ${err.message}`); }
   }
   byId('registerForm').onsubmit = async event => {
     event.preventDefault();
     const button = event.target.querySelector('button'); button.disabled = true; showError('');
     try {
-      device = await api('/api/devices/register', { method: 'POST', body: JSON.stringify({ name: byId('deviceName').value }) });
-      localStorage.setItem(KEY, JSON.stringify(device)); applyDevice(); byId('pairBox').hidden = false;
+      device = await api('/api/devices/register', { method: 'POST', body: JSON.stringify({ name: byId('deviceName').value, platform: phonePlatform }) });
+      localStorage.setItem(KEY, JSON.stringify(device)); applyDevice(); byId('pairBox').hidden = true;
+      notify('Phone inbox ready. Tap Scan QR to connect to your Mac.', 'success');
     } catch (err) { showError(err.message); }
     finally { button.disabled = false; }
   };
   byId('pairToggle').onclick = async () => {
     byId('pairBox').hidden = !byId('pairBox').hidden;
+    byId('pairToggle').setAttribute('aria-expanded', String(!byId('pairBox').hidden));
     if (!byId('pairBox').hidden && (!device?.pairingCode || device.pairingExpiresAt <= Date.now())) {
       byId('newCode').click();
     }
   };
+  function stopScan() {
+    if (scanFrame) cancelAnimationFrame(scanFrame);
+    scanFrame = null;
+    scanStream?.getTracks().forEach(track => track.stop());
+    scanStream = null;
+    byId('scanVideo').srcObject = null;
+    byId('qrScanner').hidden = true;
+  }
+  function scanConnectId(value) {
+    try {
+      const url = new URL(value);
+      if (url.origin !== location.origin || url.pathname !== '/received.html') return null;
+      const id = new URLSearchParams(url.hash.slice(1)).get('connect');
+      return /^[a-f0-9]{64}$/.test(id || '') ? id : null;
+    } catch (_) { return null; }
+  }
+  async function startScan() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof globalThis.jsQR !== 'function') {
+      notify('Camera scanning is unavailable here. Use the three-word pairing option.'); return;
+    }
+    byId('qrScanner').hidden = false;
+    byId('scanStatus').textContent = 'Opening camera…';
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      if (byId('qrScanner').hidden) { stopScan(); return; }
+      const video = byId('scanVideo');
+      video.srcObject = scanStream;
+      await video.play();
+      byId('scanStatus').textContent = 'Point your camera at the QR code on your Mac.';
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      const scan = now => {
+        if (!scanStream || byId('qrScanner').hidden) return;
+        scanFrame = requestAnimationFrame(scan);
+        if (now - lastScanAt < 180 || video.readyState < 2) return;
+        lastScanAt = now;
+        canvas.width = 480;
+        canvas.height = Math.max(1, Math.round(video.videoHeight * 480 / Math.max(1, video.videoWidth)));
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = globalThis.jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'dontInvert' });
+        const id = code && scanConnectId(code.data);
+        if (id) { stopScan(); connectFromQr(id); }
+      };
+      scanFrame = requestAnimationFrame(scan);
+    } catch (err) {
+      stopScan(); notify('Camera access failed. Allow camera permission or use the three-word pairing option.');
+    }
+  }
+  byId('scanMacQr').onclick = startScan;
+  byId('closeScan').onclick = stopScan;
   byId('newCode').onclick = async () => {
     try {
       const result = await api(`/api/devices/${encodeURIComponent(device.deviceId)}/pair-code`, { method: 'POST' });
@@ -444,7 +558,8 @@
     setTabCount('imageCount', items.length);
   }
   async function shareClip(item) {
-    const text = item.type === 'link' ? (item.url || item.content || '') : (item.full || item.content || '');
+    const text = item.type === 'link' ? safeLinkUrl(item) : (item.full || item.content || '');
+    if (item.type === 'link' && !text) { notify('This clip is not a valid web link. Use Copy instead.'); return; }
     if (!navigator.share) {
       notify('Sharing is unavailable in this browser. Use Copy instead.');
       return;
@@ -457,6 +572,14 @@
       if (err.name !== 'AbortError') notify('Could not share this clip. Use Copy instead.');
     }
   }
+  function safeLinkUrl(item) {
+    const raw = String(item.url || item.content || '').trim();
+    try {
+      const url = new URL(/^[a-z][a-z\d+.-]*:/i.test(raw) ? raw : `https://${raw}`);
+      return ['http:', 'https:'].includes(url.protocol) ? url.href : null;
+    } catch (_) { return null; }
+  }
+  const clipActionIcon = (paths) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
   function renderClips(items) {
     lastClips = items;
     const container = byId('clips');
@@ -479,11 +602,15 @@
       const content = document.createElement('span');
       content.textContent = item.full || item.content || item.url || '(empty clip)';
       body.append(type, content);
-      const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'secondary'; copy.textContent = 'Copy';
+      const copy = document.createElement('button'); copy.type = 'button'; copy.className = `secondary ${clipType === 'link' ? 'clip-action-icon' : ''}`;
+      const copyIcon = clipActionIcon('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h3"/>');
+      if (clipType === 'link') { copy.innerHTML = copyIcon; copy.title = 'Copy link'; copy.setAttribute('aria-label', 'Copy link'); }
+      else copy.textContent = 'Copy';
       copy.onclick = async () => {
         try {
           await navigator.clipboard.writeText(item.type === 'link' ? (item.url || item.content) : (item.full || item.content || ''));
-          copy.textContent = 'Copied ✓'; setTimeout(() => { if (copy.isConnected) copy.textContent = 'Copy'; }, 1800);
+          copy.textContent = '✓'; notify('Copied to clipboard', 'success');
+          setTimeout(() => { if (copy.isConnected) { if (clipType === 'link') copy.innerHTML = copyIcon; else copy.textContent = 'Copy'; } }, 1800);
         } catch (_) { notify('Could not copy this clip. Try selecting its text.'); }
       };
       const shareButton = document.createElement('button');
@@ -493,6 +620,18 @@
       shareButton.onclick = () => shareClip(item);
       const actions = document.createElement('div'); actions.className = 'clip-actions';
       actions.append(copy, shareButton);
+      if (clipType === 'link') {
+        shareButton.classList.add('clip-action-icon');
+        const href = safeLinkUrl(item);
+        if (href) {
+          const openLink = document.createElement('a');
+          openLink.className = 'secondary clip-action-icon'; openLink.href = href;
+          openLink.target = '_blank'; openLink.rel = 'noopener noreferrer';
+          openLink.title = 'Open link'; openLink.setAttribute('aria-label', 'Open link in browser');
+          openLink.innerHTML = clipActionIcon('<path d="M14 3h7v7M21 3l-9 9"/><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/>');
+          actions.append(openLink);
+        }
+      }
       card.append(icon, body, actions); container.appendChild(card);
     }
   }
@@ -501,16 +640,31 @@
     try {
       const result = await api(`/api/devices/${encodeURIComponent(device.deviceId)}/clips`);
       renderClips(result.items || []);
-      if (Array.isArray(result.pairedMacs)) updatePairingStatus(result.pairedMacs);
+      const notice = byId('phonePlanNotice');
+      notice.hidden = !result.plans?.length;
+      if (result.plans?.length) {
+        const free = result.plans.some(plan => plan.plan !== 'pro');
+        notice.textContent = free
+          ? 'Free sync · newest 20 clips per category from each Free Mac. Upgrade on your computer for more.'
+          : `Pro sync · newest ${result.plans[0].clipsPerCategory} clips per category.`;
+      }
+      // Pairing status comes from the faster image-inbox poll, not a potentially stale clip response.
     } catch (err) { showError(err.message); }
   }
   async function poll() {
-    if (!device || document.hidden || !navigator.onLine) return;
+    if (!device || document.hidden || !navigator.onLine || pollBusy) return;
+    pollBusy = true;
+    const revision = pairingRevision;
     try {
       const result = await api(`/api/devices/${encodeURIComponent(device.deviceId)}/transfers`);
       render(result.transfers || []);
+      if (revision === pairingRevision && Array.isArray(result.pairedMacs)) updatePairingStatus(result.pairedMacs);
+      if (!navigator.onLine) connectionUnavailable('Phone offline · reconnect to check Mac');
       if (pollingError) { showError(''); pollingError = false; }
-    } catch (err) { pollingError = true; showError(err.message); }
+    } catch (err) {
+      pollingError = true; showError(err.message);
+      connectionUnavailable('Connection unavailable · retrying…');
+    } finally { pollBusy = false; }
   }
   function startPolling() {
     if (pollTimer) clearInterval(pollTimer);
@@ -519,8 +673,12 @@
     pollTimer = setInterval(poll, 2500);
     clipTimer = setInterval(pollClips, 15000);
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { poll(); pollClips(); } });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopScan();
+    else { connectionUnavailable(navigator.onLine ? 'Checking connection…' : 'Phone offline · reconnect to check Mac'); poll(); pollClips(); }
+  });
   window.addEventListener('online', () => { poll(); pollClips(); });
+  window.addEventListener('offline', () => { connectionUnavailable('Phone offline · reconnect to check Mac'); });
   byId('closePreview').onclick = closePreview;
   byId('preview').addEventListener('click', event => { if (event.target === byId('preview')) closePreview(); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !byId('preview').hidden) closePreview(); });
@@ -545,20 +703,33 @@
     const next = section === 'images' ? 'clips' : 'images';
     setSection(next); byId(next === 'images' ? 'imagesTab' : 'clipsTab').focus();
   };
+  const installed = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const showInstallButton = () => { byId('installApp').hidden = installed() || !(isAndroid || isIOS); };
   window.addEventListener('beforeinstallprompt', event => {
-    event.preventDefault(); installPrompt = event; byId('installApp').hidden = false;
+    event.preventDefault(); installPrompt = event; showInstallButton();
   });
+  function showInstallGuide() {
+    byId('installInstructions').textContent = (isIOS
+      ? 'On iPhone, open this page in Safari. Tap Share, then Add to Home Screen. Turn on Open as Web App if shown, then tap Add.'
+      : 'In Chrome on Android, open the ⋮ menu and choose Install app or Add to Home screen.')
+      + ' Then open CacheTray from your home screen, tap Scan QR (or Add Mac), and scan step 2 in your computer extension.';
+    byId('installGuide').hidden = false;
+  }
   byId('installApp').onclick = async () => {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    await installPrompt.userChoice;
-    installPrompt = null; byId('installApp').hidden = true;
+    if (installPrompt) {
+      await installPrompt.prompt();
+      await installPrompt.userChoice;
+      installPrompt = null; showInstallButton(); return;
+    }
+    showInstallGuide();
   };
-  window.addEventListener('appinstalled', () => { byId('installApp').hidden = true; installPrompt = null; });
-  if (window.matchMedia('(display-mode: standalone)').matches) byId('installApp').hidden = true;
+  byId('closeInstallGuide').onclick = () => { byId('installGuide').hidden = true; };
+  window.addEventListener('appinstalled', () => { installPrompt = null; showInstallButton(); byId('installGuide').hidden = true; });
+  showInstallButton();
+  if (location.hash === '#install' && !installed() && (isAndroid || isIOS)) showInstallGuide();
   updateView();
   setSection('images');
   applyDevice();
   connectFromQr();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js?v=11').catch(() => {});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js?v=16').catch(() => {});
 })();

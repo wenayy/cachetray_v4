@@ -4,6 +4,10 @@
   "main": "src/index.js",
   "compatibility_date": "2026-09-01",
   "vars": {
+    "DODO_MODE": "test",
+    "DODO_PRODUCT_ID": "pdt_0Np5J6dGQsfx5kczVb7sP",
+    "PRO_IMAGES_PER_PHONE": "50",
+    "PRO_CLIPS_PER_CATEGORY": "100",
     "R2_ACCOUNT_ID": "257d1382cd7a62b32959c41c3257bf19",
     "R2_BUCKET_NAME": "cachetray-transfers",
     "WEB_ORIGIN": "https://cachetray.gitflex.lol",
@@ -18,5 +22,6 @@
   ],
   "r2_buckets": [
     { "binding": "OBJECTS", "bucket_name": "cachetray-transfers" }
-  ]
+  ],
+  "triggers": { "crons": ["0 * * * *"] }
 }

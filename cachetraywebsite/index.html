@@ -9,17 +9,17 @@
 <link rel="icon" type="image/png" href="logo-icon.png"/>
 <link rel="manifest" href="/manifest.webmanifest"/>
 <meta name="theme-color" content="#101014"/>
-<link rel="canonical" href="https://cachetray.weenay.com/"/>
+<link rel="canonical" href="https://cachetray.gitflex.lol/"/>
 <link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
 <meta property="og:type" content="website"/>
-<meta property="og:url" content="https://cachetray.weenay.com/"/>
+<meta property="og:url" content="https://cachetray.gitflex.lol/"/>
 <meta property="og:title" content="CacheTray — AI Clipboard for ChatGPT &amp; Claude"/>
 <meta property="og:description" content="Save screenshots, links, code and notes while browsing. Send selected context to ChatGPT or Claude in one click. Free, local, no account."/>
-<meta property="og:image" content="https://cachetray.weenay.com/og-image.png"/>
+<meta property="og:image" content="https://cachetray.gitflex.lol/logo-banner.png"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="CacheTray — AI Clipboard for ChatGPT &amp; Claude"/>
 <meta name="twitter:description" content="Save screenshots, links, code and notes while browsing. Send selected context to ChatGPT or Claude in one click."/>
-<meta name="twitter:image" content="https://cachetray.weenay.com/og-image.png"/>
+<meta name="twitter:image" content="https://cachetray.gitflex.lol/logo-banner.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
@@ -1521,7 +1521,7 @@ nav.scrolled {
     <a href="#types">What it saves</a>
     <a href="#who">Who it's for</a>
     <a href="privacy.html">Privacy</a>
-    <a href="received.html">Phone inbox</a>
+    <a href="#phone-app">Get phone app</a>
     <a href="blog/">Blog</a>
   </div>
   <div class="nav-cta">
@@ -1559,6 +1559,7 @@ nav.scrolled {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Add to Chrome — Free
         </a>
+        <a href="#phone-app" class="btn-primary" style="font-size:15px;padding:14px 28px;background:var(--bg3);color:var(--text);">Get phone app</a>
         <a href="https://www.producthunt.com/products/cachetray-clipboard-for-ai-workflows?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-cachetray" target="_blank" rel="noopener noreferrer">
           <img alt="CacheTray on Product Hunt" width="190" height="48" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1143737&theme=dark&t=1778519306304" style="display:block;"/>
         </a>
@@ -1575,7 +1576,7 @@ nav.scrolled {
         </div>
         <div class="hero-meta-item">
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-          CacheTray never uploads to our servers
+          Local by default · optional phone sync
         </div>
       </div>
     </div>
@@ -2250,7 +2251,7 @@ nav.scrolled {
     </div>
     <div class="stat-card">
       <div class="stat-num">0</div>
-      <div class="stat-label">Data sent to CacheTray servers</div>
+      <div class="stat-label">Uploads during local-only use</div>
     </div>
   </div>
 </section>
@@ -2275,10 +2276,27 @@ nav.scrolled {
     </a>
   </div>
   <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint);">
-    No account · No cloud · No tracking
+    No account required · Local by default · Optional phone sync
   </div>
 </div>
 
+<section id="phone-app" style="max-width:960px;margin:auto;padding:56px 24px;">
+  <div class="section-label">CacheTray on your phone</div>
+  <h2 class="section-title">Your clips, wherever you need them.</h2>
+  <p style="color:var(--muted);line-height:1.7;margin:16px 0;">Open CacheTray on your phone, install it on your home screen, then scan the QR code in your extension to pair. Text, links, code and tasks sync automatically; send selected images when you need them.</p>
+  <a href="/received.html" class="btn-primary">Get the phone app</a>
+  <p id="phone-install-hint" style="color:var(--muted);margin:16px 0;line-height:1.7;">Open this page on your phone and choose Get the phone app. Its Install app button guides you through adding CacheTray to your home screen.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:20px;margin:32px 0;">
+    <div class="feat-card" style="flex:1;min-width:240px;"><h3>Free</h3><p style="line-height:1.8;">5 image sends per rolling 24 hours<br>Deleting images does not reset the send allowance<br>Newest 20 clips per category<br>1 paired phone per Mac</p></div>
+    <div class="feat-card" style="flex:1;min-width:240px;border-color:var(--lime);"><h3>Pro · $4.99/month USD</h3><p style="line-height:1.8;">50 images per phone<br>Newest 100 clips per category<br>2 paired phones per Mac</p><p style="color:var(--muted);">Upgrade through Go Pro in the Chrome extension. Applicable taxes may be added at checkout.</p></div>
+  </div>
+  <p style="color:var(--muted);">Both plans keep phone clips and transfers available for 24 hours. Delete a received image to free a slot. Your extension keeps its local tray separately.</p>
+</section>
+<script>
+  const phoneInstallHint = document.getElementById('phone-install-hint');
+  if (/Android/i.test(navigator.userAgent)) phoneInstallHint.textContent = 'Open the phone app, then tap Install app. You can also use Chrome’s ⋮ menu → Install app or Add to Home screen.';
+  else if (/iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) phoneInstallHint.textContent = 'Open the phone app in Safari, tap Share → Add to Home Screen, and enable Open as Web App if shown.';
+</script>
 <!-- Footer -->
 <footer>
   <div class="footer-left">
@@ -2305,7 +2323,7 @@ nav.scrolled {
   "applicationCategory": "BrowserApplication",
   "operatingSystem": "Chrome",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "url": "https://cachetray.weenay.com/",
+  "url": "https://cachetray.gitflex.lol/",
   "downloadUrl": "https://chromewebstore.google.com/detail/cachetray/pgohpbolcaaoenhaapkikmheckannlpn"
 }
 </script>

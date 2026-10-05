@@ -256,7 +256,7 @@ CacheTray uses **three separate storage systems** for different types of data. U
 }
 ```
 
-**10MB limit:** Chrome's `storage.local` has a 10MB limit. The code guards against this by checking if serialized data exceeds 9MB and auto-pruning the oldest images first.
+**Storage limit:** CacheTray requests Chrome's `unlimitedStorage` permission for its local metadata and IndexedDB image Blobs. This removes browser quota-based pruning but does not create physical disk space. Failed writes report an error; they must never delete existing images to make room.
 
 ### System 2: IndexedDB — The Image Store
 

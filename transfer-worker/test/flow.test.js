@@ -2,64 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/index.js';
 
-function fakeEnv() {
-  const devices = new Map();
-  const pairings = new Set();
-  const pairAttempts = new Map();
-  const transfers = new Map();
-  let object = null;
-  const DB = {
-    prepare(sql) {
-      let args = [];
-      return {
-        bind(...values) { args = values; return this; },
-        async first() {
-          if (sql.includes('WHERE token_hash')) return [...devices.values()].find(d => d.token_hash === args[0]) || null;
-          if (sql.includes('SELECT attempts FROM pair_attempts')) return { attempts: pairAttempts.get(args[0])?.attempts || 0 };
-          if (sql.includes('WHERE pair_code_hash')) return [...devices.values()].find(d => d.pair_code_hash === args[0] && d.pair_expires_at > args[1]) || null;
-          if (sql.includes('SELECT 1 FROM pairings')) return pairings.has(`${args[0]}:${args[1]}`) ? { 1: 1 } : null;
-          if (sql.includes('SELECT * FROM transfers WHERE id')) {
-            const transfer = transfers.get(args[0]);
-            return sql.includes('receiver_device_id = ?') && transfer?.receiver_device_id !== args[1] ? null : transfer || null;
-          }
-          if (sql.includes('SELECT * FROM transfers')) {
-            const t = transfers.get(args[0]); return t?.receiver_device_id === args[1] && t.status === 'ready' ? t : null;
-          }
-          return null;
-        },
-        async run() {
-          if (sql.includes('INSERT INTO pair_attempts')) {
-            const previous = pairAttempts.get(args[0]);
-            pairAttempts.set(args[0], previous && previous.windowStart >= args[2]
-              ? { windowStart: previous.windowStart, attempts: previous.attempts + 1 }
-              : { windowStart: args[1], attempts: 1 });
-          } else if (sql.includes('INSERT INTO devices')) {
-            if (sql.includes('android-pwa')) devices.set(args[0], { id: args[0], name: args[1], platform: 'android-pwa', token_hash: args[2], pair_code_hash: args[3], pair_expires_at: args[4] });
-            else devices.set(args[0], { id: args[0], name: 'Mac Chrome', platform: 'chrome-extension', token_hash: args[1] });
-          } else if (sql.includes('INSERT INTO pairings')) pairings.add(`${args[0]}:${args[1]}`);
-          else if (sql.includes('UPDATE devices SET pair_code_hash = NULL')) { const d = devices.get(args[0]); d.pair_code_hash = null; }
-          else if (sql.includes('INSERT INTO transfers')) transfers.set(args[0], { id: args[0], sender_device_id: args[1], receiver_device_id: args[2], object_key: args[3], filename: args[4], mime_type: args[5], byte_size: args[6], status: 'uploading', created_at: args[7], expires_at: args[8] });
-          else if (sql.includes("UPDATE transfers SET status = 'ready'")) transfers.get(args[1]).status = 'ready';
-          else if (sql.includes('DELETE FROM transfers')) {
-            const transfer = transfers.get(args[0]);
-            if (transfer?.receiver_device_id === args[1]) transfers.delete(args[0]);
-          }
-          return {};
-        },
-        async all() {
-          return { results: [...transfers.values()].filter(t => t.receiver_device_id === args[0] && t.status === 'ready')
-            .map(t => ({ id: t.id, filename: t.filename, createdAt: t.created_at, senderName: 'Mac Chrome' })) };
-        }
-      };
-    },
-    async batch(statements) { for (const statement of statements) await statement.run(); }
-  };
-  return { DB, OBJECTS: { head: async () => object, delete: async () => { object = null; } },
-    setObject(value) { object = value; }, getObject() { return object; },
-    R2_ACCOUNT_ID: '0123456789abcdef0123456789abcdef', R2_BUCKET_NAME: 'cachetray-transfers',
-    R2_ACCESS_KEY_ID: 'test-access-key', R2_SECRET_ACCESS_KEY: 'test-secret-key',
-    WEB_ORIGIN: 'https://cachetray.example', EXTENSION_ORIGIN: 'chrome-extension://abcdef' };
-}
+import { fakeEnv } from './sqlite-env.js';
 
 async function call(env, method, path, body, token, origin = 'https://cachetray.example') {
   const response = await worker.fetch(new Request(`https://worker.example${path}`, {
@@ -85,7 +28,7 @@ test('pairing, presigned upload, ready verification and phone inbox', async () =
   }, mac.senderToken, env.EXTENSION_ORIGIN);
   assert.equal(begun.status, 201);
   assert.match(begun.body.uploadUrl, /X-Amz-Signature=/);
-  assert.equal(new URL(begun.body.uploadUrl).searchParams.get('X-Amz-SignedHeaders'), 'content-type;host');
+  assert.equal(new URL(begun.body.uploadUrl).searchParams.get('X-Amz-SignedHeaders'), 'content-length;content-type;host');
   const inboxPath = `/api/devices/${phone.deviceId}/transfers`;
   assert.equal((await call(env, 'GET', inboxPath, null, phone.deviceToken)).body.transfers.length, 0);
   const readyPath = `/api/transfers/${begun.body.transferId}/ready`;
@@ -116,4 +59,116 @@ test('pair phrases accept case and hyphens, and repeated guesses are limited', a
     assert.equal((await call(env, 'POST', '/api/devices/pair', { code: 'apple orange river' }, null, env.EXTENSION_ORIGIN)).status, 404);
   }
   assert.equal((await call(env, 'POST', '/api/devices/pair', { code: 'apple orange river' }, null, env.EXTENSION_ORIGIN)).status, 429);
+});
+
+test('QR pairing is one-use and syncs only recent non-image clips to its phone', async () => {
+  const env = fakeEnv();
+  const start = await call(env, 'POST', '/api/connect/start');
+  assert.equal(start.status, 201);
+  const session = start.body;
+  assert.match(session.connectUrl, /#connect=[a-f0-9]{64}$/);
+  const phone = (await call(env, 'POST', '/api/devices/register', { name: 'Pixel' })).body;
+  const statusPath = `/api/connect/${session.connectId}`;
+  assert.equal((await call(env, 'GET', statusPath, null, session.senderToken)).body.connected, false);
+  assert.equal((await call(env, 'POST', '/api/connect/claim', { connectId: session.connectId }, phone.deviceToken)).body.connected, true);
+  assert.equal((await call(env, 'POST', '/api/connect/claim', { connectId: session.connectId }, phone.deviceToken)).status, 410);
+  assert.equal((await call(env, 'GET', statusPath, null, session.senderToken)).body.receiverDeviceId, phone.deviceId);
+  const clipsPath = `/api/devices/${phone.deviceId}/clips`;
+  const items = [
+    { id: 1, type: 'text', content: 'hello', time: Date.now() },
+    { id: 2, type: 'image', content: 'data:image/png;base64,secret', time: Date.now() },
+    { id: 3, type: 'link', content: 'old', time: Date.now() - 2 * 86400000 }
+  ];
+  assert.equal((await call(env, 'PUT', clipsPath, { items }, session.senderToken)).body.synced, 1);
+  assert.equal((await call(env, 'GET', clipsPath, null, phone.deviceToken)).body.items[0].content, 'hello');
+  assert.equal((await call(env, 'GET', clipsPath, null, session.senderToken)).status, 401);
+  const otherPhone = (await call(env, 'POST', '/api/devices/register', { name: 'Other' })).body;
+  assert.equal((await call(env, 'GET', clipsPath, null, otherPhone.deviceToken)).status, 401);
+  const disconnectPath = `/api/devices/${phone.deviceId}/pairing`;
+  assert.equal((await call(env, 'DELETE', disconnectPath, null, otherPhone.deviceToken)).status, 401);
+  assert.equal((await call(env, 'DELETE', disconnectPath, null, session.senderToken)).body.disconnected, true);
+  assert.equal((await call(env, 'GET', clipsPath, null, phone.deviceToken)).body.items.length, 0);
+  assert.equal((await call(env, 'PUT', clipsPath, { items }, session.senderToken)).status, 403);
+});
+
+test('Free Mac can pair one phone; server-controlled Pro plan can pair two', async () => {
+  const env = fakeEnv();
+  const first = (await call(env, 'POST', '/api/devices/register', { name: 'Pixel', platform: 'android-pwa' })).body;
+  const mac = (await call(env, 'POST', '/api/devices/pair', { code: first.pairingCode })).body;
+  const second = (await call(env, 'POST', '/api/devices/register', { name: 'iPhone', platform: 'ios-pwa' })).body;
+  const free = await call(env, 'POST', '/api/devices/pair', { code: second.pairingCode }, mac.senderToken, env.EXTENSION_ORIGIN);
+  assert.equal(free.status, 403);
+  const account = await call(env, 'GET', '/api/devices/me', null, mac.senderToken, env.EXTENSION_ORIGIN);
+  assert.equal(account.body.plan, 'free');
+  assert.equal(account.body.maxPhones, 1);
+  assert.equal(account.body.pairedPhones, 1);
+  assert.equal(account.body.devices[0].receiverDeviceId, first.deviceId);
+  env.setPlan(mac.senderDeviceId, 'pro');
+  const pro = await call(env, 'POST', '/api/devices/pair', { code: second.pairingCode }, mac.senderToken, env.EXTENSION_ORIGIN);
+  assert.equal(pro.status, 201);
+  assert.equal(pro.body.senderDeviceId, mac.senderDeviceId);
+  assert.equal((await call(env, 'GET', `/api/devices/${second.deviceId}/transfers`, null, second.deviceToken)).status, 200);
+  const third = (await call(env, 'POST', '/api/devices/register', { name: 'Galaxy' })).body;
+  assert.equal((await call(env, 'POST', '/api/devices/pair', { code: third.pairingCode }, mac.senderToken)).status, 403);
+});
+
+test('re-pairing the same Mac reuses its identity, and disconnect immediately clears phone status', async () => {
+  const env = fakeEnv();
+  const phone = (await call(env, 'POST', '/api/devices/register', { name: 'Pixel' })).body;
+  const mac = (await call(env, 'POST', '/api/devices/pair', { code: phone.pairingCode })).body;
+  const phrase = (await call(env, 'POST', `/api/devices/${phone.deviceId}/pair-code`, null, phone.deviceToken)).body;
+  const again = await call(env, 'POST', '/api/devices/pair', { code: phrase.pairingCode }, mac.senderToken);
+  assert.equal(again.body.senderDeviceId, mac.senderDeviceId);
+  const inbox = `/api/devices/${phone.deviceId}/transfers`;
+  const connected = (await call(env, 'GET', inbox, null, phone.deviceToken)).body.pairedMacs;
+  assert.equal(connected.length, 1);
+  assert.equal(connected[0].online, true);
+  await call(env, 'DELETE', `/api/devices/${phone.deviceId}/pairing`, null, mac.senderToken);
+  assert.deepEqual((await call(env, 'GET', inbox, null, phone.deviceToken)).body.pairedMacs, []);
+  assert.equal((await call(env, 'DELETE', `/api/devices/${phone.deviceId}/pairing`, null, mac.senderToken)).status, 200);
+});
+
+test('inactive legacy pairings are not online, and heartbeat restores active status', async () => {
+  const env = fakeEnv();
+  const phone = (await call(env, 'POST', '/api/devices/register', { name: 'Pixel' })).body;
+  const old = (await call(env, 'POST', '/api/devices/pair', { code: phone.pairingCode })).body;
+  const phrase = (await call(env, 'POST', `/api/devices/${phone.deviceId}/pair-code`, null, phone.deviceToken)).body;
+  const mac = (await call(env, 'POST', '/api/devices/pair', { code: phrase.pairingCode })).body;
+  env.setLastSeen(old.senderDeviceId, Date.now() - 86400000);
+  env.setLastSeen(mac.senderDeviceId, Date.now() - 13 * 60000);
+  const inbox = `/api/devices/${phone.deviceId}/transfers`;
+  assert.equal((await call(env, 'GET', inbox, null, phone.deviceToken)).body.pairedMacs.filter(m => m.online).length, 0);
+  await call(env, 'PUT', `/api/devices/${phone.deviceId}/clips`, { items: [] }, mac.senderToken);
+  const active = (await call(env, 'GET', inbox, null, phone.deviceToken)).body.pairedMacs.filter(m => m.online);
+  assert.equal(active.length, 1);
+  assert.equal(active[0].id, mac.senderDeviceId);
+  // Removing one pairing leaves the other genuine pairing intact.
+  await call(env, 'DELETE', `/api/devices/${phone.deviceId}/pairings/${old.senderDeviceId}`, null, phone.deviceToken);
+  assert.deepEqual((await call(env, 'GET', inbox, null, phone.deviceToken)).body.pairedMacs.map(m => m.id), [mac.senderDeviceId]);
+});
+
+test('phone-side disconnect is owner-only and revokes pending QR sessions without touching another phone', async () => {
+  const env = fakeEnv();
+  const phone = (await call(env, 'POST', '/api/devices/register', { name: 'Pixel' })).body;
+  const other = (await call(env, 'POST', '/api/devices/register', { name: 'Other' })).body;
+  const session = (await call(env, 'POST', '/api/connect/start')).body;
+  await call(env, 'POST', '/api/connect/claim', { connectId: session.connectId }, phone.deviceToken);
+  env.setPlan(session.senderDeviceId, 'pro');
+  const pending = (await call(env, 'POST', '/api/connect/start', null, session.senderToken)).body;
+  const path = `/api/devices/${phone.deviceId}/pairings/${session.senderDeviceId}`;
+  assert.equal((await call(env, 'DELETE', path, null, other.deviceToken)).status, 401);
+  assert.equal((await call(env, 'DELETE', path, null, session.senderToken)).status, 401);
+  // A phone cannot revoke an unrelated Mac's pending session by guessing its ID.
+  await call(env, 'DELETE', `/api/devices/${other.deviceId}/pairings/${session.senderDeviceId}`, null, other.deviceToken);
+  assert.equal((await call(env, 'GET', `/api/connect/${pending.connectId}`, null, session.senderToken)).status, 200);
+  assert.equal((await call(env, 'DELETE', path, null, phone.deviceToken)).status, 200);
+  assert.equal((await call(env, 'POST', '/api/connect/claim', { connectId: pending.connectId }, phone.deviceToken)).status, 410);
+  assert.equal((await call(env, 'GET', '/api/devices/me', null, session.senderToken)).body.pairedPhones, 0);
+});
+
+test('an invalid saved sender credential never silently creates a replacement identity', async () => {
+  const env = fakeEnv();
+  const phone = (await call(env, 'POST', '/api/devices/register', { name: 'Pixel' })).body;
+  assert.equal((await call(env, 'POST', '/api/connect/start', null, 'x'.repeat(64))).status, 401);
+  assert.equal((await call(env, 'POST', '/api/devices/pair', { code: phone.pairingCode }, 'x'.repeat(64))).status, 401);
 });

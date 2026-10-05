@@ -1,6 +1,6 @@
 const {
-  STORAGE_KEY, CAPTURE_KEY, COLORS, CAT_LIMIT, EXPIRY_MS,
-  imgDbStore, imgDbGet, imgDbGetRetry, imgDbDelete,
+  STORAGE_KEY, CAPTURE_KEY, COLORS, CAT_LIMIT,
+  imgDbStore, imgDbGet, imgDbGetRetry, imgDbDeleteIfUnreferenced,
   imageComparisonKey, normalizeStoredData,
   looksLikeUrl, toLinkUrl, looksLikeCode, detectType, guessLang,
   injectImagesFunc,
@@ -16,7 +16,7 @@ async function getImageObjectUrl(note) {
   if (note.imageId == null) return note.dataUrl || note.imageUrl || null;
   if (imgObjectUrlCache.has(note.id)) return imgObjectUrlCache.get(note.id);
   const blob = await imgDbGetRetry(note.imageId);
-  if (!blob) return note.thumb || null;
+  if (!blob) return note.dataUrl || note.imageUrl || note.thumb || null;
   const url = URL.createObjectURL(blob);
   imgObjectUrlCache.set(note.id, url);
   return url;
@@ -134,24 +134,6 @@ async function loadData() {
     seedDemoData();
   }
   if (!clusters[current]) current = Object.keys(clusters)[0] || 'inbox';
-  cleanup();
-}
-
-function cleanup() {
-  const now = Date.now();
-  let cleaned = 0;
-  Object.keys(clusters).forEach((clusterName) => {
-    const before = clusters[clusterName].notes;
-    before.forEach((note) => {
-      if ((now - note.time) >= EXPIRY_MS && note.imageId != null) {
-        imgDbDelete(note.imageId).catch(() => {});
-        revokeImgCache(note.id);
-      }
-    });
-    clusters[clusterName].notes = before.filter((note) => (now - note.time) < EXPIRY_MS);
-    cleaned += before.length - clusters[clusterName].notes.length;
-  });
-  if (cleaned > 0) saveData();
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -304,6 +286,7 @@ async function getNoteImageBlob(note, { forcePng = false } = {}) {
   let blob;
   if (note.imageId != null) {
     blob = await imgDbGetRetry(note.imageId);
+    if (!blob && note.dataUrl) blob = dataUrlToBlob(note.dataUrl);
     if (!blob) return null;
   } else {
     const source = getImageSource(note);
@@ -316,7 +299,7 @@ async function getNoteImageBlob(note, { forcePng = false } = {}) {
 async function getNoteImageDataUrl(note) {
   if (note.imageId != null) {
     const blob = await imgDbGetRetry(note.imageId);
-    return blob ? blobToDataUrl(blob) : '';
+    return blob ? blobToDataUrl(blob) : (note.dataUrl || '');
   }
   const source = getImageSource(note);
   if (!source) return '';
@@ -899,7 +882,10 @@ function buildRow(note, index, activeQuery) {
       iconBox.appendChild(thumb);
       getImageObjectUrl(note).then((url) => {
         if (url && thumb.isConnected) thumb.src = url;
-        else if (!url && thumb.isConnected) { thumb.remove(); iconBox.innerHTML = TYPE_ICONS.image; }
+        else if (!url && thumb.isConnected) {
+          thumb.remove(); iconBox.innerHTML = TYPE_ICONS.image;
+          if (!isRenamingImage) subEl.textContent = 'image file unavailable · check images';
+        }
       });
     } else {
       iconBox.innerHTML = TYPE_ICONS.image;
@@ -1101,14 +1087,14 @@ function closeSearch() {
 
 let _previewNote = null;
 function openImageModal(note) {
-  _previewNote = note;
-  document.getElementById('imgPreviewTitle').textContent = note.content || 'Image';
-  document.getElementById('imgPreviewImg').src = '';
   getImageObjectUrl(note).then((url) => {
+    if (!url) { showToast('Image file unavailable — tap Check images'); return; }
+    _previewNote = note;
+    document.getElementById('imgPreviewTitle').textContent = note.content || 'Image';
     const img = document.getElementById('imgPreviewImg');
-    if (img) img.src = url || '';
+    if (img) img.src = url;
+    document.getElementById('imgPreviewModal').classList.add('open');
   });
-  document.getElementById('imgPreviewModal').classList.add('open');
 }
 
 function buildGridCard(note) {
@@ -1129,7 +1115,9 @@ function buildGridCard(note) {
   img.onerror = () => { if (img.isConnected) img.style.opacity = '0'; };
   getImageObjectUrl(note).then((url) => {
     if (url && img.isConnected) img.src = url;
-    else if (!url && img.isConnected) img.style.opacity = '0';
+    else if (!url && img.isConnected) {
+      img.remove(); thumb.classList.add('missing'); thumb.textContent = 'Image unavailable';
+    }
   });
   thumb.appendChild(img);
   card.appendChild(thumb);
@@ -1299,7 +1287,7 @@ function showUndo() {
 }
 
 function hideUndo() {
-  if (lastDel?.note?.imageId != null) imgDbDelete(lastDel.note.imageId).catch(() => {});
+  if (lastDel?.note?.imageId != null) imgDbDeleteIfUnreferenced(lastDel.note.imageId).catch(() => {});
   if (lastDel?.note?.id != null) revokeImgCache(lastDel.note.id);
   document.getElementById('undoBar').classList.remove('show');
   lastDel = null;
@@ -1472,25 +1460,62 @@ function fmtImageTime(prefix) {
   return `${prefix} · ${h}:${m} ${ampm}`;
 }
 
+async function saveImageData() {
+  try {
+    await saveData();
+  } catch (error) {
+    console.error('CacheTray image metadata was not saved', error);
+    let warning = document.getElementById('imageSaveWarning');
+    if (!warning) {
+      warning = document.createElement('div');
+      warning.id = 'imageSaveWarning';
+      warning.setAttribute('role', 'alert');
+      warning.style.cssText = 'position:fixed;z-index:9999;inset:8px 8px auto;padding:14px;border:2px solid #f87171;border-radius:12px;background:#292021;color:#fff;font-size:13px;line-height:1.4;box-shadow:0 8px 30px #0009';
+      document.body.appendChild(warning);
+    }
+    warning.textContent = 'Image was NOT saved. Your Mac may be out of disk space. Free space, then copy the image again. Do not clear CacheTray data.';
+    throw error;
+  }
+}
+
 async function addImageNote(file) {
   const rawDataUrl = await blobToDataUrl(file);
   const imageHash = imageComparisonKey(rawDataUrl);
 
   const allNotes = Object.values(clusters).flatMap((c) => c.notes);
-  const isDupe = allNotes.some((n) => {
+  const duplicate = allNotes.find((n) => {
     if (n.type !== 'image') return false;
     if (n.imageHash) return n.imageHash === imageHash;
     if (n.dataUrl) return imageComparisonKey(n.dataUrl) === imageHash;
     return false;
   });
-  if (isDupe) return;
+  if (duplicate) {
+    if (duplicate.imageId != null && !await imgDbGetRetry(duplicate.imageId)) {
+      try {
+        const restored = await compressBlob(file);
+        duplicate.imageId = await imgDbStore(restored);
+        duplicate.mime = restored.type;
+        delete duplicate.dataUrl;
+      } catch (error) {
+        console.warn('CacheTray: IndexedDB repair failed; retaining inline image', error);
+        duplicate.dataUrl = rawDataUrl;
+        delete duplicate.imageId;
+      }
+      duplicate.time = Date.now();
+      await saveImageData();
+      renderCats(); renderFeed();
+      showToast('image restored');
+    }
+    return;
+  }
 
   let imageId, mime, compressed;
   try {
     compressed = await compressBlob(file);
     imageId = await imgDbStore(compressed);
     mime = compressed.type;
-  } catch (_) {
+  } catch (error) {
+    console.warn('CacheTray: IndexedDB image write failed; retaining inline image', error);
     const dataUrl = rawDataUrl;
     const note = {
       id: ++uid, type: 'image',
@@ -1498,7 +1523,7 @@ async function addImageNote(file) {
       dataUrl, imageHash, time: Date.now()
     };
     clusters[current].notes.unshift(note);
-    await saveData(); renderCats(); renderFeed();
+    await saveImageData(); renderCats(); renderFeed();
     return;
   }
 
@@ -1523,7 +1548,7 @@ async function addImageNote(file) {
   }
 
   currentCat = 'image';
-  await saveData();
+  await saveImageData();
   renderCats();
   renderFeed();
   flashFirst();
@@ -1559,15 +1584,17 @@ function clearSelect() {
 
 async function bulkDelete() {
   const ids = Array.from(selectedIds);
+  const removedImageIds = [];
   clusters[current].notes.forEach((note) => {
     if (selectedIds.has(note.id)) {
-      if (note.imageId != null) imgDbDelete(note.imageId).catch(() => {});
+      if (note.imageId != null) removedImageIds.push(note.imageId);
       revokeImgCache(note.id);
     }
   });
   clusters[current].notes = clusters[current].notes.filter((note) => !selectedIds.has(note.id));
   clearSelect();
   await saveData();
+  await Promise.allSettled(removedImageIds.map(id => imgDbDeleteIfUnreferenced(id)));
   renderCats();
   renderFeed();
   showToast(`Deleted ${ids.length} items`);
@@ -1890,6 +1917,9 @@ async function toggleTheme() {
 }
 
 function bindEvents() {
+  document.getElementById('imageHealthBtn')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('image-health.html') });
+  });
   document.getElementById('searchToggleBtn').addEventListener('click', () => {
     const bar = document.getElementById('searchBar');
     if (bar.classList.contains('open')) closeSearch();
@@ -2041,22 +2071,8 @@ document.getElementById('imgPreviewClose').addEventListener('click', () => {
         event.preventDefault();
         const file = items[index].getAsFile();
         if (!file) return;
-        // Dedup: don't save if the same image was just auto-captured
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const hash = imageComparisonKey(dataUrl);
-        const allNotes = Object.values(clusters).flatMap((c) => c.notes);
-        const isDupe = allNotes.some((n) => {
-          if (n.type !== 'image') return false;
-          if (n.imageHash) return n.imageHash === hash;
-          if (n.dataUrl) return imageComparisonKey(n.dataUrl) === hash;
-          return false;
-        });
-        if (!isDupe) await addImageNote(file);
+        // addImageNote also repairs an existing image whose IndexedDB Blob is missing.
+        await addImageNote(file);
         return;
       }
     }
@@ -2094,14 +2110,16 @@ async function confirmClearAll() {
   closeClearAllModal();
   const count = clusters[current]?.notes?.length || 0;
   if (!clusters[current]) return;
+  const removedImageIds = [];
   clusters[current].notes.forEach((note) => {
-    if (note.imageId != null) imgDbDelete(note.imageId).catch(() => {});
+    if (note.imageId != null) removedImageIds.push(note.imageId);
     revokeImgCache(note.id);
   });
   clusters[current].notes = [];
   selectedIds.clear();
   currentCat = 'all';
   await saveData();
+  await Promise.allSettled(removedImageIds.map(id => imgDbDeleteIfUnreferenced(id)));
   renderAll();
   showToast(`Cleared ${count} item${count !== 1 ? 's' : ''}`);
 }

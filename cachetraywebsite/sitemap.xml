@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://cachetray.weenay.com/</loc>
+    <loc>https://cachetray.gitflex.lol/</loc>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://cachetray.weenay.com/privacy.html</loc>
+    <loc>https://cachetray.gitflex.lol/privacy.html</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://cachetray.weenay.com/blog/</loc>
+    <loc>https://cachetray.gitflex.lol/blog/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://cachetray.weenay.com/blog/send-screenshots-to-chatgpt.html</loc>
+    <loc>https://cachetray.gitflex.lol/blog/send-screenshots-to-chatgpt.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://cachetray.weenay.com/blog/best-ai-clipboard-extension.html</loc>
+    <loc>https://cachetray.gitflex.lol/blog/best-ai-clipboard-extension.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://cachetray.weenay.com/blog/collect-research-links-for-claude.html</loc>
+    <loc>https://cachetray.gitflex.lol/blog/collect-research-links-for-claude.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://cachetray.weenay.com/blog/send-code-snippets-to-ai.html</loc>
+    <loc>https://cachetray.gitflex.lol/blog/send-code-snippets-to-ai.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://cachetray.weenay.com/blog/clipboard-manager-ai-workflows.html</loc>
+    <loc>https://cachetray.gitflex.lol/blog/clipboard-manager-ai-workflows.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>

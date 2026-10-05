@@ -1,19 +1,24 @@
 <!doctype html>
 <html lang="en"><head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#101014"><meta name="description" content="Receive images from CacheTray on your phone">
+  <meta name="theme-color" content="#101014"><meta name="description" content="Receive images and clips from CacheTray on your phone">
   <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/logo-icon.png">
-  <link rel="stylesheet" href="/received.css?v=11"><title>Received · CacheTray</title>
+  <link rel="stylesheet" href="/received.css?v=16"><title>Received · CacheTray</title>
 </head><body>
-  <header><img src="/logo-icon.png" alt="" width="32" height="32"><strong>CacheTray</strong><span>Received</span><button id="installApp" type="button" class="secondary install-app" hidden>Install app</button></header>
+  <header><img src="/logo-icon.png" alt="" width="32" height="32"><strong>CacheTray</strong><button id="installApp" type="button" class="secondary install-app" hidden>Install app</button></header>
   <main>
+    <div id="installGuide" class="install-guide" hidden><p id="installInstructions"></p><button id="closeInstallGuide" type="button" class="secondary">Got it</button></div>
     <section id="setup" hidden>
       <h1>Set up this phone</h1><p>Give this phone a name. CacheTray will create a pairing code for your Mac.</p>
       <form id="registerForm"><label for="deviceName">Device name</label><input id="deviceName" value="Android phone" maxlength="60" required>
         <button type="submit">Create phone inbox</button></form>
     </section>
     <section id="inbox" hidden>
-      <div class="heading"><div><h1>Received</h1><p id="deviceLabel"></p><p id="pairStatus" class="pair-status" role="status">Checking connection…</p></div><button id="pairToggle" type="button" class="secondary">Pair Mac</button></div>
+      <div class="heading"><div><h1>Received</h1><p id="deviceLabel"></p><p id="pairStatus" class="pair-status" role="status">Checking connection…</p></div><div class="pair-actions"><button id="scanMacQr" type="button" class="secondary">Scan QR</button><button id="pairToggle" type="button" class="secondary pair-words" aria-expanded="false">Use words</button></div></div>
+      <button id="manageMacs" type="button" class="manage-macs" aria-expanded="false" aria-controls="connectionsPanel" hidden>Manage connections</button>
+      <section id="connectionsPanel" class="connections-panel" hidden aria-label="Paired Macs"><p>Old pairings are not active connections. Disconnect any entries you no longer use. Your images stay untouched.</p><div id="macConnections"></div></section>
+      <p id="phonePlanNotice" class="plan-notice" hidden></p>
+      <details class="phone-release"><summary>What’s new</summary><p>Free sync keeps the newest 20 clips per category and allows 5 image sends per rolling 24 hours. Deleting images does not reset this daily allowance. Pro is $4.99/month USD plus applicable taxes: 50 images stored per phone, 100 clips per category, and 2 paired phones per Mac. Pro storage slots free up after deletion or expiry. Use Go Pro in your computer’s extension to upgrade.</p><p>Image previews, sharing, downloads and separate clip categories are available here. Install CacheTray using the Install app button to open it from your home screen.</p></details>
       <div id="pairBox" hidden><p id="pairInstructions">Type these three words into the extension’s Send to Phone window. They expire in 10 minutes.</p>
         <div class="pair-code-row"><div id="pairCode" class="code"></div><button id="copyPairCode" type="button" class="secondary copy-code">
           <svg class="copy-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h3"/></svg>
@@ -49,6 +54,11 @@
     </section>
     <p id="error" role="alert"></p>
   </main>
+  <div id="qrScanner" class="scan-overlay" hidden role="dialog" aria-modal="true" aria-label="Scan Mac pairing code"><div class="scan-dialog">
+    <h2>Scan your Mac’s QR code</h2><p>Open CacheTray on your Mac and choose Connect phone.</p>
+    <video id="scanVideo" autoplay muted playsinline></video>
+    <p id="scanStatus" role="status">Opening camera…</p><button id="closeScan" type="button" class="secondary">Cancel</button>
+  </div></div>
   <div id="preview" class="preview" hidden role="dialog" aria-modal="true" aria-label="Image preview">
     <button id="closePreview" type="button" class="close" aria-label="Close preview">×</button>
     <div class="previewBody"><img id="previewImage" alt="Received image"><p id="previewLoading" role="status" hidden>Loading image…</p></div>
@@ -56,5 +66,5 @@
     <p id="previewError" class="preview-error" role="alert"></p>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-  <script src="/transfer-config.js?v=11"></script><script src="/received.js?v=11"></script>
+  <script src="/vendor/jsQR.js?v=1"></script><script src="/transfer-config.js?v=16"></script><script src="/received.js?v=16"></script>
 </body></html>

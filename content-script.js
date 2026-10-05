@@ -93,7 +93,7 @@
     }
   }
 
-  function showCaptureToast(itemType, preview) {
+  function showCaptureToast(itemType, preview, failed = false) {
     const TYPE_META = {
       link:  { label: 'Link',    color: '#60a5fa', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' },
       image: { label: 'Image',   color: '#fbbf24', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' },
@@ -101,7 +101,7 @@
       task:  { label: 'Task',    color: '#f87171', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' },
       text:  { label: 'Text',    color: '#94a3b8', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>' },
     };
-    const meta = TYPE_META[itemType] || TYPE_META.text;
+    const meta = failed ? { ...TYPE_META.image, color: '#f87171' } : (TYPE_META[itemType] || TYPE_META.text);
 
     let wrapper = document.getElementById('__qn_toast_wrap__');
     if (!wrapper) {
@@ -144,7 +144,7 @@
     Object.assign(brand.style, { color: '#c8f060', fontSize: '10px', fontWeight: '700', letterSpacing: '0.3px', flex: '1' });
 
     const badge = document.createElement('span');
-    badge.textContent = 'captured';
+    badge.textContent = failed ? 'not saved' : 'captured';
     Object.assign(badge.style, {
       fontSize: '9px', color: '#555', letterSpacing: '0.5px',
       textTransform: 'uppercase', fontWeight: '600'
@@ -164,7 +164,7 @@
     Object.assign(iconWrap.style, { color: meta.color, display: 'flex', flexShrink: '0' });
 
     const typeLabel = document.createElement('span');
-    typeLabel.textContent = `${meta.label} saved`;
+    typeLabel.textContent = failed ? 'Image was not saved' : `${meta.label} saved`;
     Object.assign(typeLabel.style, { color: '#e8e5e0', fontSize: '12px', fontWeight: '600' });
 
     typeRow.appendChild(iconWrap); typeRow.appendChild(typeLabel);
@@ -192,7 +192,7 @@
         { opacity: 1, transform: 'translateX(0) scale(1)', offset: 0.82 },
         { opacity: 0, transform: 'translateX(12px) scale(0.97)' }
       ],
-      { duration: 2800, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)', fill: 'forwards' }
+      { duration: failed ? 6000 : 2800, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)', fill: 'forwards' }
     );
 
     anim.finished.finally(() => {
@@ -240,7 +240,7 @@
     if (typeof image !== 'string' || !image) return false;
     await loadLastStored();
     const hash = imageQuickHash(image);
-    if (hash && hash === lastStoredImageHash) return false;
+    // The background must see repeats: a matching note may need its missing Blob repaired.
 
     try {
       const response = await chrome.runtime.sendMessage({
@@ -253,6 +253,7 @@
         lastStoredImageHash = hash;
         lastStoredTextKey = '';
       }
+      if (response?.error) showCaptureToast('image', 'Storage unavailable. Free disk space and try again.', true);
       return Boolean(response && response.ok);
     } catch (error) {
       return false;
@@ -484,7 +485,7 @@
     if (!message || !message.type) return false;
 
     if (message.type === 'SHOW_CAPTURE_TOAST') {
-      showCaptureToast(message.itemType || 'text', message.preview || message.text || '');
+      showCaptureToast(message.itemType || 'text', message.preview || message.text || '', message.failed === true);
       return false;
     }
 

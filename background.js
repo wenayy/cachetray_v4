@@ -1,8 +1,8 @@
-importScripts('shared.js', 'firebase-config.js', 'cloud-sync.js', 'cloud-controller.js', 'transfer-config.js', 'transfer-controller.js');
+importScripts('shared.js', 'transfer-config.js', 'transfer-controller.js');
 
 const {
   STORAGE_KEY, CAPTURE_KEY, COLORS, CAT_LIMIT,
-  EXPIRY_MS, imgDbStore, imgDbGet, imgDbDelete,
+  EXPIRY_MS, imgDbStore, imgDbGet, imgDbGetRetry, imgDbDeleteIfUnreferenced,
   normalizeStoredData, looksLikeUrl, toLinkUrl, detectType, guessLang,
   imageComparisonKey, noteComparisonKey, findDuplicateNote,
   ensureCluster, findOrCreateOverflow, injectImagesFunc,
@@ -12,7 +12,7 @@ const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html';
 const CONTENT_SCRIPT_FILE = 'content-script.js';
 const INJECTABLE_URL_PATTERNS = ['http://*/*', 'https://*/*', 'file:///*'];
 const CLEANUP_ALARM = 'ct_cleanup';
-const CLOUD_SYNC_ALARM = 'ct_cloud_sync';
+const PHONE_SYNC_ALARM = 'ct_phone_sync';
 
 function seedDemoData() {
   const now = Date.now();
@@ -31,8 +31,8 @@ function seedDemoData() {
           },
           {
             id: 2, type: 'link', time: now - 2 * min,
-            content: 'cachetray.weenay.com',
-            url: 'https://cachetray.weenay.com/'
+            content: 'cachetray.gitflex.lol',
+            url: 'https://cachetray.gitflex.lol/'
           },
           {
             id: 3, type: 'link', time: now - 6 * min,
@@ -68,25 +68,9 @@ async function loadData() {
 
 async function saveData(data) {
   data.modifiedAt = Date.now();
-  const json = JSON.stringify(data);
-  if (json.length > 9 * 1024 * 1024) {
-    const clusters = data.clusters;
-    outer: for (let pass = 0; pass < 50; pass++) {
-      let oldest = null, oldestCluster = null;
-      for (const [name, cluster] of Object.entries(clusters)) {
-        for (const note of cluster.notes) {
-          if (note.type === 'image' && (!oldest || note.time < oldest.time)) {
-            oldest = note; oldestCluster = name;
-          }
-        }
-      }
-      if (!oldest) break outer;
-      if (oldest.imageId != null) imgDbDelete(oldest.imageId).catch(() => {});
-      clusters[oldestCluster].notes = clusters[oldestCluster].notes.filter((n) => n !== oldest);
-      if (JSON.stringify(data).length <= 9 * 1024 * 1024) break outer;
-    }
-    console.warn('CacheTray: storage near limit — oldest images pruned automatically');
-  }
+  // Never delete a Blob before metadata commits. With unlimitedStorage, normal
+  // writes do not need destructive quota-pruning; a failed write must preserve
+  // the previous notes and their images.
   await chrome.storage.local.set({ [STORAGE_KEY]: data });
 }
 
@@ -176,13 +160,15 @@ async function addStoredNote(rawText, options = {}) {
   if (type === 'link') note.url = options.url || toLinkUrl(text);
   if (options.sub) note.sub = options.sub;
   if (options.mime) note.mime = options.mime;
+  let imageBlob = null;
+  let compressedImageHash = '';
   if (options.dataUrl) {
+    note.imageHash = imageComparisonKey(options.dataUrl);
     try {
       const compressed = await compressImageDataUrl(options.dataUrl);
-      const blob = await fetch(compressed).then((r) => r.blob());
-      note.imageId = await imgDbStore(blob);
-      note.imageHash = imageComparisonKey(compressed);
-      note.mime = blob.type;
+      compressedImageHash = imageComparisonKey(compressed);
+      imageBlob = await fetch(compressed).then((r) => r.blob());
+      note.mime = imageBlob.type;
     } catch (_) {
       note.dataUrl = options.dataUrl;
     }
@@ -192,13 +178,37 @@ async function addStoredNote(rawText, options = {}) {
   const existing = data.clusters[clusterName].notes.filter((item) => item.type === type).length;
   const targetCluster = existing >= CAT_LIMIT ? findOrCreateOverflow(data.clusters, clusterName, type) : clusterName;
 
-  const dup = findDuplicateNote(data.clusters, note);
+  const dup = findDuplicateNote(data.clusters, note)
+    || (compressedImageHash && compressedImageHash !== note.imageHash
+      ? findDuplicateNote(data.clusters, { ...note, imageHash: compressedImageHash }) : null);
   if (dup) {
+    if (type === 'image' && options.dataUrl && dup.note.imageId != null
+      && !await imgDbGetRetry(dup.note.imageId)) {
+      try {
+        dup.note.imageId = await imgDbStore(imageBlob || await fetch(options.dataUrl).then(r => r.blob()));
+        delete dup.note.dataUrl;
+      } catch (error) {
+        console.warn('CacheTray: IndexedDB repair failed; retaining inline image', error);
+        dup.note.dataUrl = options.dataUrl;
+        delete dup.note.imageId;
+      }
+      dup.note.mime = note.mime || options.mime;
+    }
+    if (type === 'image' && options.dataUrl) dup.note.imageHash = note.imageHash;
     dup.note.time = Date.now();
     const dupCluster = data.clusters[dup.clusterName];
     dupCluster.notes = [dup.note, ...dupCluster.notes.filter((n) => n !== dup.note)];
     await saveData(data);
     return { note: dup.note, cluster: dup.clusterName, bumped: true };
+  }
+
+  if (imageBlob) {
+    try {
+      note.imageId = await imgDbStore(imageBlob);
+    } catch (error) {
+      console.warn('CacheTray: IndexedDB image write failed; retaining inline image', error);
+      note.dataUrl = options.dataUrl;
+    }
   }
 
   data.clusters[targetCluster].notes.unshift(note);
@@ -332,40 +342,43 @@ async function runCleanup() {
   const data = await loadData();
   const now = Date.now();
   let cleaned = 0;
+  const removedImageIds = [];
   Object.keys(data.clusters).forEach((name) => {
     const before = data.clusters[name].notes;
-    before.forEach((note) => {
-      if ((now - note.time) >= EXPIRY_MS && note.imageId != null) {
-        imgDbDelete(note.imageId).catch(() => {});
-      }
+    before.forEach(note => {
+      if ((now - note.time) >= EXPIRY_MS && note.imageId != null) removedImageIds.push(note.imageId);
     });
     data.clusters[name].notes = before.filter((n) => (now - n.time) < EXPIRY_MS);
     cleaned += before.length - data.clusters[name].notes.length;
   });
   if (cleaned > 0) {
     await saveData(data);
+    await Promise.allSettled(removedImageIds.map(id => imgDbDeleteIfUnreferenced(id)));
     console.log(`CacheTray: cleaned ${cleaned} expired items`);
   }
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === CLEANUP_ALARM) runCleanup();
-  if (alarm.name === CLOUD_SYNC_ALARM) CacheTrayCloudController.syncNow('alarm').catch(() => {});
+  if (alarm.name === CLEANUP_ALARM) enqueueSave(runCleanup);
+  if (alarm.name === PHONE_SYNC_ALARM) CacheTrayTransfer.syncClips().catch(() => {});
+  if (alarm.name === 'ct_phone_connect') CacheTrayTransfer.resumeConnect().catch(() => {});
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes[STORAGE_KEY]) {
-    CacheTrayCloudController.scheduleUpload();
+    CacheTrayTransfer.scheduleClipSync();
   }
 });
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason === 'update') await chrome.storage.local.set({ ct_release_pending: chrome.runtime.getManifest().version });
   setupContextMenus();
   ensureOffscreenDocument().catch(() => {});
   chrome.alarms.create(CLEANUP_ALARM, { periodInMinutes: 360 }); // every 6 hours
-  chrome.alarms.create(CLOUD_SYNC_ALARM, { periodInMinutes: 1 });
+  chrome.alarms.clear('ct_cloud_sync'); // Remove the old Firebase preview alarm on update.
+  chrome.alarms.create(PHONE_SYNC_ALARM, { periodInMinutes: 5 });
   if (await hasHostPermission()) {
     await registerContentScripts();
     injectContentScriptIntoOpenTabs().catch(() => {});
@@ -377,8 +390,11 @@ chrome.runtime.onStartup.addListener(async () => {
   setupContextMenus();
   ensureOffscreenDocument().catch(() => {});
   chrome.alarms.create(CLEANUP_ALARM, { periodInMinutes: 360 });
-  chrome.alarms.create(CLOUD_SYNC_ALARM, { periodInMinutes: 1 });
-  runCleanup(); // also clean on startup
+  chrome.alarms.clear('ct_cloud_sync');
+  chrome.alarms.create(PHONE_SYNC_ALARM, { periodInMinutes: 5 });
+  enqueueSave(runCleanup); // also clean on startup
+  CacheTrayTransfer.resumeConnect().catch(() => {});
+  CacheTrayTransfer.syncClips().catch(() => {});
   if (await hasHostPermission()) {
     await registerContentScripts();
     injectContentScriptIntoOpenTabs().catch(() => {});
@@ -389,18 +405,18 @@ chrome.runtime.onStartup.addListener(async () => {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'quicknotes-save-selection' && info.selectionText) {
-    const result = await addStoredNote(info.selectionText);
+    const result = await enqueueSave(() => addStoredNote(info.selectionText));
     await maybeSendCaptureToast(tab?.id, result, detectType(info.selectionText));
     return;
   }
   if (info.menuItemId === 'quicknotes-save-link' && info.linkUrl) {
     const label = info.linkText || info.linkUrl;
-    const result = await addStoredNote(label, { type: 'link', url: info.linkUrl, content: label });
+    const result = await enqueueSave(() => addStoredNote(label, { type: 'link', url: info.linkUrl, content: label }));
     await maybeSendCaptureToast(tab?.id, result, 'link');
     return;
   }
   if (info.menuItemId === 'quicknotes-save-page' && tab?.url) {
-    const result = await addStoredNote(tab.title || tab.url, { type: 'link', url: tab.url, content: tab.title || tab.url });
+    const result = await enqueueSave(() => addStoredNote(tab.title || tab.url, { type: 'link', url: tab.url, content: tab.title || tab.url }));
     await maybeSendCaptureToast(tab?.id, result, 'link');
     return;
   }
@@ -415,7 +431,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         reader.readAsDataURL(blob);
       });
       const nameFromUrl = info.srcUrl.split('/').pop()?.split('?')[0] || 'captured-image';
-      const result = await addStoredNote(nameFromUrl, { type: 'image', filename: nameFromUrl, dataUrl });
+      const result = await enqueueSave(() => addStoredNote(nameFromUrl, { type: 'image', filename: nameFromUrl, dataUrl }));
       await maybeSendCaptureToast(tab?.id, result, 'image');
     } catch (error) {
       console.error('Failed to capture image', error);
@@ -445,39 +461,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   (async () => {
+    const senderTabId = sender?.tab?.id;
     try {
-      const senderTabId = sender?.tab?.id;
 
       if (message.type === 'TRANSFER_DEVICES') {
-        sendResponse({ ok: true, devices: await CacheTrayTransfer.devices(), configured: CacheTrayTransfer.configured() });
+        const account = CacheTrayTransfer.configured() ? await CacheTrayTransfer.accountStatus().catch(() => null) : null;
+        sendResponse({ ok: true, devices: await CacheTrayTransfer.devices(), configured: CacheTrayTransfer.configured(),
+          account });
+        return;
+      }
+      if (message.type === 'BILLING_PREPARE') {
+        sendResponse({ ok: true, ...await CacheTrayTransfer.prepareBilling(message.newKey === true) });
+        return;
+      }
+      if (message.type === 'BILLING_ACTION') {
+        if (!['checkout', 'portal', 'restore'].includes(message.action)) throw new Error('Invalid billing action');
+        const result = await CacheTrayTransfer.billingAction(message.action, message.recoveryKey);
+        const url = result.checkoutUrl || result.portalUrl;
+        if (url) await chrome.tabs.create({ url });
+        sendResponse({ ok: true, result });
         return;
       }
       if (message.type === 'TRANSFER_PAIR') {
         sendResponse({ ok: true, devices: await CacheTrayTransfer.pair(message.code) });
         return;
       }
+      if (message.type === 'TRANSFER_CONNECT_START') {
+        sendResponse({ ok: true, session: await CacheTrayTransfer.startConnect() });
+        return;
+      }
+      if (message.type === 'TRANSFER_CONNECT_STATUS') {
+        sendResponse({ ok: true, result: await CacheTrayTransfer.connectStatus(message.session) });
+        return;
+      }
+      if (message.type === 'TRANSFER_CONNECT_PENDING') {
+        sendResponse({ ok: true, session: await CacheTrayTransfer.pendingConnect() });
+        return;
+      }
+      if (message.type === 'TRANSFER_DISCONNECT') {
+        sendResponse({ ok: true, devices: await CacheTrayTransfer.disconnect(message.receiverDeviceId) });
+        return;
+      }
       if (message.type === 'TRANSFER_SEND_IMAGE') {
         sendResponse({ ok: true, result: await CacheTrayTransfer.send(message.imageId, message.filename, message.receiverDeviceId) });
-        return;
-      }
-
-      if (message.type === 'CLOUD_GET_STATUS') {
-        sendResponse({ ok: true, status: await CacheTrayCloudController.status() });
-        return;
-      }
-
-      if (message.type === 'CLOUD_SIGN_IN') {
-        sendResponse({ ok: true, status: await CacheTrayCloudController.signIn() });
-        return;
-      }
-
-      if (message.type === 'CLOUD_SIGN_OUT') {
-        sendResponse({ ok: true, status: await CacheTrayCloudController.signOut() });
-        return;
-      }
-
-      if (message.type === 'CLOUD_SYNC_NOW') {
-        sendResponse({ ok: true, status: await CacheTrayCloudController.syncNow('manual') });
         return;
       }
 
@@ -549,7 +575,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: false });
     } catch (error) {
       console.error('CacheTray message failed', error);
-      sendResponse({ ok: false, error: error?.message || String(error) });
+      if (senderTabId && (message.type === 'CHECK_CLIPBOARD_IMAGE'
+        || (message.type === 'quicknotes-capture-copy' && (message.payload?.dataUrl || message.payload?.imageUrl)))) {
+        chrome.tabs.sendMessage(senderTabId, {
+          type: 'SHOW_CAPTURE_TOAST', itemType: 'image', failed: true,
+          preview: 'Storage unavailable. Free disk space and try again.'
+        }).catch(() => {});
+      }
+      sendResponse({ ok: false, error: error?.message || String(error), code: error?.code, limits: error?.limits });
     }
   })();
 

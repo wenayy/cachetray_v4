@@ -68,12 +68,18 @@ const CT = (() => {
   }
 
   async function imgDbStore(blob) {
+    if (!(blob instanceof Blob) || blob.size === 0) throw new Error('Cannot store an empty image');
     const db = await openImageDb();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(IMAGE_STORE, 'readwrite');
+      // Wait for the durable transaction, not the individual add request. A request
+      // can succeed and then have its transaction abort, leaving a dangling imageId.
+      const tx = db.transaction(IMAGE_STORE, 'readwrite', { durability: 'strict' });
       const req = tx.objectStore(IMAGE_STORE).add(blob);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      let id;
+      req.onsuccess = () => { id = req.result; };
+      tx.oncomplete = () => resolve(id);
+      tx.onabort = () => reject(tx.error || req.error || new Error('Image save was aborted'));
+      tx.onerror = () => reject(tx.error || req.error || new Error('Image save failed'));
     });
   }
 
@@ -110,6 +116,16 @@ const CT = (() => {
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error);
     });
+  }
+
+  async function imgDbDeleteIfUnreferenced(id) {
+    if (id == null) return false;
+    const stored = await chrome.storage.local.get(STORAGE_KEY);
+    const stillUsed = Object.values(stored[STORAGE_KEY]?.clusters || {}).some(cluster =>
+      (cluster.notes || []).some(note => note.imageId != null && String(note.imageId) === String(id)));
+    if (stillUsed) return false;
+    await imgDbDelete(id);
+    return true;
   }
 
   // ── Data normalization ─────────────────────────────────────────────────────
@@ -312,7 +328,7 @@ const CT = (() => {
   return {
     STORAGE_KEY, CAPTURE_KEY, IMAGE_DB_NAME, IMAGE_STORE,
     COLORS, CAT_LIMIT, EXPIRY_MS,
-    openImageDb, imgDbStore, imgDbGet, imgDbGetRetry, imgDbDelete,
+    openImageDb, imgDbStore, imgDbGet, imgDbGetRetry, imgDbDelete, imgDbDeleteIfUnreferenced,
     normalizeStoredData,
     looksLikeUrl, toLinkUrl, looksLikeCode, detectType, guessLang,
     normalizeTextKey, imageComparisonKey, noteComparisonKey,
