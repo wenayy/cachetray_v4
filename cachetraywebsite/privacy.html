@@ -198,15 +198,16 @@ footer {
 <main>
   <div class="pp-badge">🔐 Privacy Policy</div>
   <h1>Your prompt context<br>stays yours.</h1>
-  <div class="updated">Last updated: September 2026 · Send to Phone preview</div>
+  <div class="updated">Last updated: October 6, 2026</div>
+  <p>This policy covers the CacheTray Chrome extension, the website at cachetray.gitflex.lol, the phone web app, and optional Pro billing.</p>
 
   <div class="tl-dr">
     <div class="tl-dr-title">TL;DR — The short version</div>
-    <div class="tl-dr-item"><span class="check">✓</span> Saved items stay local unless you explicitly turn on cloud sync or Send to Phone.</div>
-    <div class="tl-dr-item"><span class="check">✓</span> Send to Phone uploads only the image you select; other saved items remain local.</div>
-    <div class="tl-dr-item"><span class="check">✓</span> Temporary transfer images are available for 24 hours, then hidden and deleted by bucket lifecycle.</div>
+    <div class="tl-dr-item"><span class="check">✓</span> Your clipboard collection stays local when no phone is paired.</div>
+    <div class="tl-dr-item"><span class="check">✓</span> Pairing enables automatic sync of recent text, links, code and tasks. Images are sent only when you choose Send to Phone.</div>
+    <div class="tl-dr-item"><span class="check">✓</span> Phone items are temporary: images expire after 24 hours. Physical cloud deletion can take longer.</div>
     <div class="tl-dr-item"><span class="check">✓</span> Deleting or uninstalling the extension removes local data, not existing cloud transfers immediately.</div>
-    <div class="tl-dr-item"><span class="check">✓</span> CacheTray can stage prompt assets for AI chats, but we never receive that content.</div>
+    <div class="tl-dr-item"><span class="check">✓</span> Pro checkout uses Dodo Payments. CacheTray does not receive your full card details.</div>
   </div>
 
   <h2>What CacheTray stores</h2>
@@ -218,23 +219,26 @@ footer {
     <li>Timestamps of when items were saved</li>
     <li>Auto-capture toggle state (on/off)</li>
   </ul>
-  <p>This data stays in browser-managed storage by default. Optional cloud sync and Send to Phone are separate, explicit actions described below.</p>
+  <p>This data stays in browser-managed storage by default. Pairing a phone enables the transfer and automatic clip-sync features described below. The phone web app stores its device credentials and preferences in browser storage and caches app files so it can be opened from your home screen.</p>
 
   <h2>What we do NOT collect</h2>
   <ul>
-    <li>No personal information is required for local-only use. Optional Google cloud sync uses your account email; Send to Phone uses a device name and random device identifier.</li>
-    <li>No browsing history or URLs of pages you visit</li>
-    <li>No analytics, telemetry, or usage statistics</li>
-    <li>No crash reports or error logs sent anywhere</li>
-    <li>No analytics-based device tracking. The transfer backend processes a random device ID, and Cloudflare may process request IP addresses in its service logs.</li>
+    <li>No account is required for local-only use or QR phone pairing.</li>
+    <li>We do not collect your general browsing history. URLs and titles you choose to save, or links you copy into CacheTray, become part of your saved clips and can sync to your paired phone.</li>
+    <li>We do not add advertising or clipboard-content analytics to the extension. The backend does keep image-send usage records to enforce plan limits.</li>
+    <li>The transfer service can generate operational error logs. Cloudflare processes technical request information, including IP addresses, for hosting, security and service operation.</li>
+    <li>Device IDs identify paired installations; they are not used for advertising.</li>
     <li>We do not receive or store your card details. Optional Pro payments are processed by Dodo Payments.</li>
   </ul>
 
   <h2>Where your data goes</h2>
-  <p><strong>Local by default.</strong> If you use Send to Phone, the selected image is uploaded directly from your extension to a private Cloudflare R2 bucket using a short-lived upload URL. A Cloudflare Worker/D1 backend stores the filename, MIME type, size, device IDs, and transfer times. The paired phone can request a short-lived download URL. The original image remains in local IndexedDB. The transfer is hidden after 24 hours; R2 lifecycle deletion may take longer. Optional Google cloud sync is a separate feature using Firebase and is off unless you sign in.</p>
-  <p>Pairing your phone also enables temporary synchronization of recent text, links, code and tasks. These clips are stored in Cloudflare D1 for up to 24 hours, within your plan limits. This does not upload your local images automatically.</p>
+  <p><strong>Images you send.</strong> If you use Send to Phone, the selected image is uploaded directly from your extension to a private Cloudflare R2 bucket using a short-lived upload URL. A Cloudflare Worker/D1 backend stores the filename, MIME type, size, device IDs, and transfer times. The paired phone can request a short-lived download URL. The original image remains in local IndexedDB. The transfer is hidden after 24 hours; R2 lifecycle deletion may take longer.</p>
+  <p><strong>Automatic clip sync after pairing.</strong> Recent text, links, code and tasks are sent to Cloudflare D1 while your phone is paired, within your plan limits. The synced snapshot contains clip content, URLs, timestamps, item IDs and task completion state. Only clips from the last 24 hours are eligible; each snapshot expires 24 hours after its latest update and is removed by scheduled cleanup. Updates replace the previous snapshot. Images are not uploaded automatically. Disconnect the phone in the extension to stop future sync to it; disconnecting alone does not immediately erase existing cloud copies.</p>
+  <p><strong>Pairing and usage.</strong> Our backend stores random device IDs, device names and platform labels, hashed device tokens and pairing codes, pairing relationships, connection timestamps, and image-send usage records. These support authentication, device status, rate limiting and Free/Pro limits. QR pairing sessions and pairing phrases expire after 10 minutes.</p>
   <p><strong>Optional Pro billing.</strong> Dodo Payments processes checkout, subscription management and payment information. Our backend stores checkout, subscription and provider customer IDs, subscription status and renewal dates, your random extension device ID, and a hash of your recovery key. Keep your recovery key private: it can restore your subscription to another installation. Billing records are separate from temporary transfers and are not automatically removed after 24 hours.</p>
   <p>Separately, when you use the right-click "Save image" feature, your browser may fetch the image URL to save it locally. This is a standard browser action — not an upload to our transfer service.</p>
+  <p><strong>AI chats and sharing.</strong> When you choose to insert a clip into an AI chat or share it with another app, the destination service receives the content you send and handles it under its own policy. This is separate from CacheTray phone sync.</p>
+  <p><strong>Support.</strong> If you email us, we receive your email address and the message or attachments you provide. We use these to answer your request and troubleshoot the issue. Do not send passwords, card details or recovery keys.</p>
 
   <h2>Permissions and why we need them</h2>
   <table class="perm-table">
@@ -245,27 +249,38 @@ footer {
       <tr><td class="perm-name">clipboardRead</td><td>To automatically detect and save copied prompt assets (Ctrl+C) into your local workspace.</td></tr>
       <tr><td class="perm-name">clipboardWrite</td><td>To copy a saved item back to your clipboard when you click copy inside the extension.</td></tr>
       <tr><td class="perm-name">storage</td><td>To save your notes, workspaces, and preferences locally, plus opt-in pairing information.</td></tr>
+      <tr><td class="perm-name">unlimitedStorage</td><td>To retain locally saved image data without the extension's usual storage quota. Available disk space and browser behavior still apply.</td></tr>
+      <tr><td class="perm-name">alarms</td><td>To schedule local expiry cleanup and refresh clips for paired phones.</td></tr>
       <tr><td class="perm-name">activeTab</td><td>To read the current tab's URL and title when you click "Save current tab". Only triggered by your explicit action.</td></tr>
       <tr><td class="perm-name">scripting</td><td>To inject a lightweight script that detects copy events and inserts selected text/images into focused inputs such as AI chat composers.</td></tr>
       <tr><td class="perm-name">contextMenus</td><td>To add right-click options — Save link, Save image, Save selection — directly from any webpage.</td></tr>
-      <tr><td class="perm-name">offscreen</td><td>Required by Chrome Manifest V3 to access clipboard data in the background while keeping everything local.</td></tr>
+      <tr><td class="perm-name">offscreen</td><td>To access clipboard data and process images through an offscreen document in Chrome Manifest V3.</td></tr>
       <tr><td class="perm-name">sidePanel</td><td>To open CacheTray as a persistent side panel beside Claude, ChatGPT, NotebookLM, docs, or research tabs. No data is transmitted by opening the panel.</td></tr>
-      <tr><td class="perm-name">&lt;all_urls&gt;</td><td>To inject the copy-detection script across all websites. The script only listens for copy events — it does not read page content, track navigation, or transmit anything.</td></tr>
+      <tr><td class="perm-name">HTTP/HTTPS host access</td><td>To detect copied content on supported webpages, fetch images you save, insert selected clips into focused inputs, and contact the phone-transfer service. It is not used to collect your general browsing history.</td></tr>
     </tbody>
   </table>
 
   <h2>Third-party services</h2>
-  <p>Local-only use does not require the transfer service. Send to Phone uses Cloudflare Worker, D1, and private R2 storage. Optional Google cloud sync uses Google/Firebase. We do not add analytics or advertising to Send to Phone.</p>
-  <p>This privacy policy page loads fonts from Google Fonts for display only — this is limited to this webpage and has no connection to the extension's functionality.</p>
+  <p>The website and phone-transfer service use Cloudflare Pages, Workers, D1 and private R2 storage. See <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare's privacy policy</a>. Pro checkout and subscription management use Dodo Payments, which handles payment, tax and fraud-prevention data under its own policies; see <a href="https://dodopayments.com/legal/dpa">Dodo Payments' data-processing information</a>.</p>
+  <p>The current phone-pairing flow does not require Google sign-in or Firebase. Older preview versions included optional Google/Firebase sync; upgrading does not itself delete any data previously stored by that feature. Contact support if you used that preview and need help with its cloud data.</p>
+  <p>The website loads Google Fonts and may load third-party embeds such as the Product Hunt badge. Those providers receive the requests needed to display these resources. External services and email providers handle information according to their own policies. Hosting and payment services may process data outside your country.</p>
+
+  <h2>How we use and protect information</h2>
+  <p>We use data to provide the features you choose, deliver clips to paired devices, verify Pro subscriptions, enforce usage limits, prevent abuse and respond to support requests. We do not sell your clipboard content or use it for advertising or AI model training.</p>
+  <p>Transfers use HTTPS, authenticated device requests and short-lived image URLs. Cloud phone transfers are not end-to-end encrypted: the service processes synced clip content and stores uploaded images. Keep device credentials, recovery keys and signed image URLs private. No online service can guarantee absolute security.</p>
 
   <h2>Data retention and deletion</h2>
-  <p>Local CacheTray items are automatically removed after <strong>3 days</strong> unless retained by existing app behavior. Send to Phone transfers are visible for 24 hours; the R2 lifecycle rule removes the transferred object after roughly one day, with possible processing delay. Transfer metadata is currently retained in D1 after expiry but no longer returned in the phone inbox. You can delete local data manually:</p>
+  <p>Local history is subject to the extension's <strong>3-day</strong> cleanup; cleanup runs while the browser/extension can operate, so removal is not guaranteed at an exact instant. Send to Phone images are visible for 24 hours; R2 lifecycle deletion runs asynchronously and can take longer. Expired transfer metadata is currently retained in D1 but no longer returned in the phone inbox.</p>
+  <p>Deleting an image from the phone inbox requests deletion of its R2 object and transfer record. It does not delete your extension's original or copies downloaded or shared elsewhere. The separate Free image-send usage record remains until its rolling 24-hour allowance expires; deleting an image does not reset that allowance. Expired clip snapshots and pairing sessions are removed by scheduled cleanup.</p>
+  <p>Device, pairing, billing and support records have separate retention from temporary clip content. They are not all automatically deleted after 24 hours. Billing and payment records may need to be retained for subscription operation, fraud prevention, disputes or legal requirements. Cancelling Pro stops renewal according to your subscription settings; it is not a request to erase all data.</p>
+  <p>You can manage your local data:</p>
   <ul>
     <li>Delete individual items using the trash icon</li>
     <li>Bulk-select and delete multiple items at once</li>
     <li>Clear an entire workspace with the "Clear all" button</li>
     <li>Uninstall the extension to delete its local data; this does not immediately delete previously sent R2 transfers</li>
   </ul>
+  <p>Clearing the phone site's browser storage removes its local identity and preferences; it does not immediately erase server records. For access, correction or deletion requests concerning cloud or support data, email <a href="mailto:treastingmike@gmail.com">treastingmike@gmail.com</a>. We may need to verify that the records belong to you without asking for your password or recovery key. Requests are subject to applicable law and any records that must be retained. Requests about payment data held by Dodo Payments may also need to be handled by Dodo Payments.</p>
 
   <h2>Children's privacy</h2>
   <p>CacheTray is not directed at children under 13. We do not knowingly collect data from children.</p>
@@ -274,7 +289,7 @@ footer {
   <p>If this policy is updated, the "Last updated" date at the top of this page will reflect the change. Significant changes will also be noted in the extension's store changelog.</p>
 
   <h2>Contact</h2>
-  <p>Questions about this privacy policy? Reach out at: <a href="mailto:vinayjjoshi.310@gmail.com">vinayjjoshi.310@gmail.com</a></p>
+  <p>Questions about this privacy policy? Reach out at: <a href="mailto:treastingmike@gmail.com">treastingmike@gmail.com</a></p>
 </main>
 
 <footer>
@@ -284,7 +299,7 @@ footer {
   </div>
   <div class="footer-links">
     <a href="index.html">Home</a>
-    <a href="mailto:vinayjjoshi.310@gmail.com">Contact</a>
+    <a href="/support.html">Support</a>
   </div>
 </footer>
 

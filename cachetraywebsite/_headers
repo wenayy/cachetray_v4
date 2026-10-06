@@ -1,10 +1,8 @@
-/received.html
-  Cache-Control: no-cache, max-age=0, must-revalidate
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
 
-/received.js
-  Cache-Control: no-cache, max-age=0, must-revalidate
-
-/received.css
+/received*
   Cache-Control: no-cache, max-age=0, must-revalidate
 
 /transfer-config.js
@@ -12,3 +10,11 @@
 
 /sw.js
   Cache-Control: no-cache, max-age=0, must-revalidate
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+/billing-return*
+  Cache-Control: no-store

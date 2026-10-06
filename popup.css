@@ -2006,6 +2006,34 @@ html.light .add-input::placeholder {
 .phone-already-sent { color: var(--green); }
 .billing-news-button.has-update { box-shadow: 0 0 0 2px var(--lime); }
 .billing-summary { color: var(--lime); font-size: 12px; }
+.billing-compact { display: flex; flex-direction: column; padding: 18px; gap: 12px; overflow: hidden; text-align: left; }
+.billing-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-shrink: 0; }
+.billing-heading .modal-title { margin: 0; font-size: 19px; }
+.billing-heading .modal-btn { margin: 0; padding: 5px 9px; font-size: 10px; }
+.billing-scroll { min-height: 0; overflow-y: auto; }
+.billing-price { display: flex; align-items: baseline; gap: 7px; }
+.billing-price strong { color: var(--text); font-size: 32px; line-height: 1.2; }
+.billing-price span,.billing-price-note { color: var(--muted); font-size: 10px; }
+.billing-price-note { margin: 5px 0 12px; line-height: 1.5; }
+.billing-compact .billing-summary { margin: 0 0 12px; padding: 8px 10px; background: var(--lime-soft); border-radius: 7px; font-size: 11px; }
+.billing-comparison { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; }
+.billing-comparison th,.billing-comparison td { padding: 9px 5px; border-bottom: 1px solid var(--line); text-align: center; }
+.billing-comparison th:first-child { text-align: left; width: 30%; }
+.billing-comparison thead th { color: var(--muted); font-size: 10px; }
+.billing-comparison tbody th { color: var(--text); font-weight: 500; }
+.billing-comparison b { display: block; font-size: 21px; line-height: 1.1; color: var(--text); }
+.billing-comparison small { display: block; color: var(--muted); font-size: 9px; margin-top: 5px; }
+.billing-comparison tr > :last-child { background: var(--lime-soft); }
+.billing-comparison tr > :last-child b,.billing-comparison thead th:last-child { color: var(--lime); }
+.billing-recovery-card { margin-top: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 11px; }
+.billing-recovery-card summary,.billing-fine-print summary { cursor: pointer; }
+.billing-recovery-card .billing-saved { margin-bottom: 0; font-size: 10px; }
+.billing-fine-print { margin-top: 12px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.billing-fine-print ul { padding-left: 16px; }
+.billing-fine-print li { margin-bottom: 6px; }
+.billing-footer { flex-shrink: 0; border-top: 1px solid var(--line); padding-top: 12px; }
+.billing-footer .modal-btn { width: 100%; margin: 0; font-size: 12px; }
+.billing-footer .modal-btn + .modal-btn:not([hidden]) { margin-top: 8px; }
 .release-modal { text-align: left; }
 .release-version { color: var(--muted); font-size: 9px; letter-spacing: 1px; margin-bottom: 8px; }
 .release-modal .modal-title { font-size: 20px; line-height: 1.25; margin-bottom: 16px; }
