@@ -1,0 +1,5 @@
+_headers
+.vercel
+*.zip
+.env*
+*.log

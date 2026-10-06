@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image storage health · CacheTray</title>
+  <style>
+    :root { color-scheme: dark; font: 15px system-ui, sans-serif; background: #101014; color: #f5f5f5; }
+    body { max-width: 780px; margin: 32px auto; padding: 0 18px; }
+    h1 { margin-bottom: 5px; } p { color: #b7b7bf; line-height: 1.5; }
+    button { border: 0; border-radius: 9px; padding: 11px 16px; background: #c8fb69; color: #151515; font: inherit; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: wait; }
+    .summary, li { margin-top: 14px; padding: 14px; border: 1px solid #3b3b45; border-radius: 12px; background: #1d1d23; }
+    .summary { white-space: pre-line; } li { list-style: none; } ul { padding: 0; }
+    .missing { border-color: #a24a4a; } .available { border-color: #426d57; }
+    small { display: block; color: #aaaab2; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Image storage health</h1>
+  <p>This check only reads CacheTray’s current metadata and local image store. It does not upload, repair, or delete anything.</p>
+  <button id="check" type="button">Check images</button>
+  <div id="summary" class="summary" role="status">Ready to check.</div>
+  <ul id="results"></ul>
+  <script src="shared.js"></script>
+  <script src="image-health.js"></script>
+</body>
+</html>
