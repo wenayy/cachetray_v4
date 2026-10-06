@@ -2006,6 +2006,23 @@ html.light .add-input::placeholder {
 .phone-already-sent { color: var(--green); }
 .billing-news-button.has-update { box-shadow: 0 0 0 2px var(--lime); }
 .billing-summary { color: var(--lime); font-size: 12px; }
+.release-modal { text-align: left; }
+.release-version { color: var(--muted); font-size: 9px; letter-spacing: 1px; margin-bottom: 8px; }
+.release-modal .modal-title { font-size: 20px; line-height: 1.25; margin-bottom: 16px; }
+.release-features { display: grid; gap: 10px; }
+.release-feature { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+.release-icon { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 8px; background: var(--lime-soft); color: var(--lime); font-size: 20px; }
+.release-feature strong { color: var(--text); font-size: 12px; }
+.release-feature p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.release-pro { margin-top: 14px; padding: 12px; border: 1px solid var(--lime); border-radius: 10px; background: var(--lime-soft); }
+.release-pro > strong { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; color: var(--lime); font-size: 12px; }
+.release-pro > strong span { font-size: 10px; }
+.release-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.release-stats span { color: var(--muted); font-size: 9px; text-align: center; }
+.release-stats b { display: block; color: var(--text); font-size: 21px; margin-bottom: 3px; }
+.release-details { margin-top: 14px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.release-details summary { cursor: pointer; }
+.release-details a { color: var(--lime); }
 .billing-benefits,.release-notes { color: var(--text); font-size: 11px; line-height: 1.7; }
 .billing-key-actions { display: flex; gap: 8px; margin-top: 8px; }
 .billing-saved { display: flex; gap: 7px; align-items: center; margin: 10px 0; color: var(--text); font-size: 11px; }

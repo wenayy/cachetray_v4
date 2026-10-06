@@ -148,6 +148,7 @@
   async function syncClips() {
     const paired = await devices();
     if (!paired.length) return;
+    const primarySender = await senderIdentity();
     const stored = await chrome.storage.local.get('quicknotes_v1');
     const data = stored.quicknotes_v1;
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
@@ -162,7 +163,11 @@
       if (device.enabled === false) continue;
       try {
         const account = await api('/api/devices/me', {}, device.senderToken);
-        await chrome.storage.local.set({ ct_phone_plan_v1: account });
+        // A legacy phone may belong to an older Free Mac identity. Its quota
+        // applies to that sync only, not the current installation's paid badge.
+        if (device.senderDeviceId === primarySender?.senderDeviceId) {
+          await chrome.storage.local.set({ ct_phone_plan_v1: account });
+        }
         const cap = account.limits?.clipsPerCategory || 20;
         const counts = { text: 0, link: 0, code: 0, task: 0 };
         const items = [];
