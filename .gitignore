@@ -33,3 +33,18 @@ test-results/
 # Superseded promotional drafts; the README uses the final demo thumbnail
 /CacheTray-YouTube-Thumbnail.png
 /CacheTray-YouTube-Thumbnail-Demo-V2.png
+
+# Internal setup, release and interview notes stay local
+/BILLING_SETUP.md
+/CLOUDFLARE_PAGES_SETUP.md
+/FIREBASE_LOCAL_TESTING.md
+/IMAGE_STORAGE_RECOVERY.md
+/PUBLISHING_CHECKLIST.md
+/SECURITY_REVIEW.md
+/SEND_TO_PHONE_SETUP.md
+/TECHNICAL_CONCEPTS.md
+/VERCEL_MIGRATION.md
+/EXTENSION_REVIEW_*.md
+/CacheTray-Chrome-Web-Store-Description-*.txt
+/CacheTray-Privacy-Fields-*.txt
+/interview-prep/

@@ -176,8 +176,6 @@ Point [transfer-config.js](transfer-config.js) and [the phone configuration](cac
 
 **Keep credentials server-side.** `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`, `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` belong in Worker secrets—not extension files, the public website, GitHub or a release ZIP. Use Dodo test mode and a sandbox product while developing billing.
 
-Deployment references: [Cloudflare Pages setup](CLOUDFLARE_PAGES_SETUP.md), [billing setup](BILLING_SETUP.md) and [publishing checklist](PUBLISHING_CHECKLIST.md). Some documents describe earlier releases; the source and current configuration are authoritative.
-
 ### Run the regression tests
 
 After installing the Worker dependencies, run from the repository root:
