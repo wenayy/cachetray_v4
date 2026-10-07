@@ -21,18 +21,9 @@ Built as a **Chrome Manifest V3 extension**, with a **phone PWA**, **Cloudflare 
 
 ## Watch it work
 
-[![Watch the CacheTray demo: how the extension works](CacheTray-YouTube-Thumbnail-Demo.png)](CacheTray-Demo-v2.mp4)
+[![Watch the CacheTray demo on YouTube](CacheTray-YouTube-Thumbnail-Demo.png)](https://www.youtube.com/watch?v=6k_3QaWkQXo)
 
-**[Watch the demo](CacheTray-Demo-v2.mp4)** · **[Watch with narration](CacheTray-Demo-Voiceover.mp4)**
-
-Click the thumbnail to open the video file on GitHub. If playback is unavailable, download the MP4 to watch it locally.
-
-<details>
-<summary>More demo material</summary>
-
-[Original demo recording](CacheTray-Demo.mp4)
-
-</details>
+**[Watch the demo on YouTube](https://www.youtube.com/watch?v=6k_3QaWkQXo)**
 
 ## Two small changes that save a lot of repetition
 
@@ -50,7 +41,7 @@ Install the phone web app, pair with a QR code, and keep recent text, links, cod
 
 ![Feature preview: send images and sync recent clips from the extension to your phone](CacheTray-Feature-Phone-Sync.png)
 
-*The images above are promotional feature illustrations. The demo recordings show the working extension.*
+*The images above are promotional feature illustrations. The YouTube demo shows the working extension.*
 
 ## What you can do
 
@@ -71,43 +62,6 @@ Install the phone web app, pair with a QR code, and keep recent text, links, cod
 4. For mobile, open the phone setup in the extension, scan the install QR, install the web app, then use the pairing QR to connect.
 
 On **Android**, install from Chrome. On **iPhone**, use Safari → Share → Add to Home Screen. Installation guidance adapts to the phone.
-
-## How it is built
-
-The local tray works independently of the phone backend. Cloud services enter the workflow when a user pairs a phone or purchases Pro.
-
-```mermaid
-flowchart LR
-    Page["Webpage selection / copy"] --> Capture["Isolated content script"]
-    Clipboard["System clipboard"] --> Offscreen["Offscreen document"]
-    Capture --> Background["MV3 background worker"]
-    Offscreen --> Background
-    UI["Popup / side panel"] <--> Background
-    Background --> Metadata["chrome.storage.local: clip metadata"]
-    Background --> Images["IndexedDB: image Blobs"]
-    Background <-->|"Paired phone sync / explicit image sends"| API["Cloudflare Worker"]
-    Phone["Phone PWA"] <--> API
-    API --> D1["D1: pairing, clips, usage, billing state"]
-    API --> R2["R2: temporary image objects"]
-    API <-->|"Checkout, signed webhooks, verification"| Dodo["Dodo Payments"]
-```
-
-| Layer | Technology | Responsibility |
-| --- | --- | --- |
-| Extension | JavaScript, HTML/CSS, Chrome Manifest V3 | Capture, clipboard access, popup, side panel and user-triggered insertion. |
-| Local persistence | Chrome storage + IndexedDB | Keep clip metadata separate from image bytes. |
-| Phone app | Installable PWA, service worker, native Web Share API | Browse received clips and images without a native app download. |
-| Transfer API | Cloudflare Workers, D1, R2, `aws4fetch` | Pairing, temporary sync, signed image transfers and quota enforcement. |
-| Billing | Dodo Payments | Hosted checkout and server-verified subscription entitlements. |
-| Website | Static HTML/CSS/JavaScript on Cloudflare Pages | Product pages, installation guidance, phone inbox, privacy and support. |
-| Verification | Node test runner + Playwright | Storage, capture, quota, billing and browser regressions. |
-
-### Engineering decisions worth looking at
-
-- **One writer for collection changes.** Popup, side panel and capture events submit patches to a serialized background save queue. Stable IDs and patch-based updates prevent stale UI snapshots from overwriting newly captured items. See [collection-store.js](collection-store.js) and [background.js](background.js).
-- **A saved image means a committed image.** Image writes are acknowledged after the IndexedDB transaction completes. Retry reads and reference-aware cleanup help avoid metadata pointing to missing image bytes. See [shared.js](shared.js).
-- **Capture has a trust boundary.** Capture runs in an isolated content script, checks trusted user gestures and excludes editable selection targets. A webpage cannot grant itself capture authority through a forged window message. See [content-script.js](content-script.js) and [capture security tests](tests/capture-security.test.js).
-- **Limits belong on the server.** Image transfers reserve quota before upload and validate uploaded object size/type before becoming ready. Billing checks webhook signatures and verifies subscription state with the payment provider; a frontend Pro badge does not grant access. See [plans.js](transfer-worker/src/plans.js) and [billing.js](transfer-worker/src/billing.js).
 
 ## Local-first, with temporary phone sync
 
@@ -135,94 +89,23 @@ Deleting an image **does not reset** Free's daily send allowance. Pro image slot
 
 ## Development
 
-### Load the extension
-
 ```sh
 git clone https://github.com/wenayy/cachetray_v4.git
 cd cachetray_v4
 ```
 
-1. Open `chrome://extensions` and enable **Developer mode**.
-2. Choose **Load unpacked** and select this repository's root directory, containing `manifest.json`.
-3. Pin CacheTray and open it. There is no extension build step.
+Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select this folder. No extension build step is required.
 
-The repository includes production transfer URLs. Local tray development does not need a backend; for your own phone/billing deployment, configure your own endpoints and Cloudflare resources instead of using the production service.
-
-### Run the phone website locally
+To run the regression suite with Node.js 22 or newer, install the Worker dependencies first:
 
 ```sh
-python3 -m http.server 8080 --directory cachetraywebsite
-```
-
-Open `http://localhost:8080/received.html`. Phone camera access, installation and sharing depend on browser support and a secure context; use HTTPS when testing on an actual phone.
-
-### Run your own transfer backend
-
-Use **Node.js 22 or newer** for the Worker tooling and test suite.
-
-```sh
-cd transfer-worker
-npm ci
-```
-
-Before running it, configure [wrangler.jsonc](transfer-worker/wrangler.jsonc) for your own D1 database, R2 bucket, web origin and extension origin. Then:
-
-```sh
-npm run db:local
-npm run dev
-```
-
-Point [transfer-config.js](transfer-config.js) and [the phone configuration](cachetraywebsite/transfer-config.js) at your development API. Hosted phone transfers also need the correct R2 CORS origins and lifecycle rule.
-
-**Keep credentials server-side.** `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`, `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` belong in Worker secrets—not extension files, the public website, GitHub or a release ZIP. Use Dodo test mode and a sandbox product while developing billing.
-
-### Run the regression tests
-
-After installing the Worker dependencies, run from the repository root:
-
-```sh
+npm ci --prefix transfer-worker
 node --test transfer-worker/test/*.test.js tests/*.test.js
 ```
 
-The suite covers collection patches, concurrent updates, capture security, selection behavior, image persistence, plan limits and billing verification.
+The repository includes production service URLs. Configure your own backend for phone and billing development.
 
-[Browser release checks](tests/browser-release.cjs) additionally exercise popup/sidebar concurrency, image capture and undo, safe rendering, selection capture and forged-message rejection in an isolated extension profile. Set `PLAYWRIGHT_MODULE` to your installed Playwright module path and install its Chromium browser before running that script. Clipboard transport is stubbed in the harness, so it does not replace manual testing of the real system clipboard.
-
-### Package a release
-
-After updating the version in `manifest.json`:
-
-```sh
-node scripts/package-extension.cjs
-```
-
-The packager uses an explicit runtime-file allowlist, checks for credential patterns, validates referenced HTML resources and tests the ZIP. It refuses to overwrite an existing versioned archive. Backend files, tests and demo media are not included in the extension upload.
-
-## Repository guide
-
-```text
-.
-├── manifest.json                 Chrome extension entry points and permissions
-├── background.js                 Capture orchestration and serialized saves
-├── collection-store.js           Shared collection patch logic
-├── shared.js                     Data helpers and IndexedDB image storage
-├── content-script.js             Trusted webpage copy and selection capture
-├── offscreen.js                  Clipboard access outside the service worker
-├── popup.* / sidebar.*           Extension interfaces
-├── transfer-*.js / billing-ui.js Phone pairing, transfers and billing UI
-├── cachetraywebsite/             Website and production phone PWA
-├── transfer-worker/
-│   ├── src/                      Cloudflare API, quotas and billing
-│   ├── migrations/               D1 schema migrations
-│   └── test/                     Backend regression tests
-├── tests/                        Extension storage, capture and browser tests
-├── scripts/                      Release packaging and website preparation
-└── mobile/                       Earlier native-client experiment, not the production PWA
-```
-
-## Current boundaries
-
-Chrome's restricted pages do not allow normal content-script capture. AI insertion depends on the destination site's editor and may need updating when that site changes. The phone PWA is an inbox for desktop-to-phone transfers, not a system-wide mobile clipboard listener or a guaranteed background-delivery service. Existing server checks reduce specific abuse paths; they are not a claim that the system is impossible to abuse.
+Detailed architecture, development instructions, setup guides and interview notes live in **[CacheTray Concepts](https://github.com/wenayy/cachetray-concepts)**.
 
 ## Support
 

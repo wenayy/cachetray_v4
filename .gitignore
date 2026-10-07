@@ -29,6 +29,10 @@ test-results/
 
 # Generated store uploads stay local; source and README demo media are tracked
 /CacheTray-*.zip
+/CacheTray-Demo*.mp4
+
+# Separate local repository for concepts and internal documentation
+/.local-repos/
 
 # Superseded promotional drafts; the README uses the final demo thumbnail
 /CacheTray-YouTube-Thumbnail.png
