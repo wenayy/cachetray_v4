@@ -1,4 +1,4 @@
-importScripts('shared.js', 'transfer-config.js', 'transfer-controller.js');
+importScripts('shared.js', 'collection-store.js', 'transfer-config.js', 'transfer-controller.js');
 
 const {
   STORAGE_KEY, CAPTURE_KEY, COLORS, CAT_LIMIT,
@@ -14,7 +14,9 @@ const INJECTABLE_URL_PATTERNS = ['http://*/*', 'https://*/*', 'file:///*'];
 const CLEANUP_ALARM = 'ct_cleanup';
 const PHONE_SYNC_ALARM = 'ct_phone_sync';
 
-function seedDemoData() {
+async function seedDemoData() {
+  const existing = await chrome.storage.local.get(STORAGE_KEY);
+  if (existing[STORAGE_KEY]?.clusters) return;
   const now = Date.now();
   const min = 60 * 1000;
   const data = {
@@ -53,21 +55,23 @@ function seedDemoData() {
       }
     }
   };
-  chrome.storage.local.set({ [STORAGE_KEY]: data });
+  await saveData(data);
 }
 
 async function loadData() {
   const stored = await chrome.storage.local.get(STORAGE_KEY);
   const parsed = stored[STORAGE_KEY];
-  if (parsed && parsed.clusters) return normalizeStoredData(parsed);
-  return {
+  if (parsed && parsed.clusters) return CacheTrayCollection.normalize(normalizeStoredData(parsed));
+  return CacheTrayCollection.normalize({
     clusters: { inbox: { color: COLORS[0], notes: [] } },
     uid: 0, current: 'inbox', currentCat: 'all'
-  };
+  });
 }
 
 async function saveData(data) {
   data.modifiedAt = Date.now();
+  const previous = await chrome.storage.local.get(STORAGE_KEY);
+  data.revision = CacheTrayCollection.revision(previous[STORAGE_KEY]) + 1;
   // Never delete a Blob before metadata commits. With unlimitedStorage, normal
   // writes do not need destructive quota-pruning; a failed write must preserve
   // the previous notes and their images.
@@ -145,7 +149,7 @@ async function addStoredNote(rawText, options = {}) {
 
   const type = options.type || detectType(text);
   const note = {
-    id: ++data.uid,
+    id: crypto.randomUUID(),
     type,
     content: options.content || text || options.filename || 'captured item',
     time: Date.now()
@@ -278,12 +282,16 @@ async function hasHostPermission() {
 async function registerContentScripts() {
   try {
     const existing = await chrome.scripting.getRegisteredContentScripts({ ids: ['qn-main'] });
-    if (existing.length > 0) return;
+    if (existing.length > 0) {
+      await chrome.scripting.updateContentScripts([{ id: 'qn-main', allFrames: true }]);
+      return;
+    }
     await chrome.scripting.registerContentScripts([{
       id: 'qn-main',
       matches: ['https://*/*', 'http://*/*'],
       js: [CONTENT_SCRIPT_FILE],
       runAt: 'document_idle',
+      allFrames: true,
       persistAcrossSessions: true
     }]);
   } catch (_) {}
@@ -383,7 +391,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     await registerContentScripts();
     injectContentScriptIntoOpenTabs().catch(() => {});
   }
-  if (details.reason === 'install') seedDemoData();
+  if (details.reason === 'install') await enqueueSave(seedDemoData);
 });
 
 chrome.runtime.onStartup.addListener(async () => {
@@ -444,6 +452,29 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message?.type) return false;
 
+  const extensionPage = Boolean(sender?.url) && sender?.id === chrome.runtime.id &&
+    ['popup.html', 'sidebar.html'].some(page => sender.url === chrome.runtime.getURL(page));
+  const offscreenPage = Boolean(sender?.url) && sender?.id === chrome.runtime.id &&
+    sender.url === chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH);
+  const contentPage = sender?.id === chrome.runtime.id && Number.isInteger(sender?.tab?.id) &&
+    /^https?:\/\//.test(sender.url || '');
+  if (message.type.startsWith('COLLECTION_') && !extensionPage) {
+    sendResponse({ ok: false, error: 'Collection mutations require a CacheTray extension page.' });
+    return false;
+  }
+  if ((message.type === 'COPIED_IMAGE' && !offscreenPage)
+    || (message.type === 'COPIED_TEXT' && !offscreenPage && !contentPage)
+    || (message.type === 'quicknotes-capture-copy' && !extensionPage)) {
+    sendResponse({ ok: false, error: 'Untrusted capture source.' });
+    return false;
+  }
+  if ((message.type === 'COPIED_TEXT' && (typeof message.text !== 'string' || message.text.length > 1_000_000))
+    || (message.type === 'COPIED_IMAGE' && (typeof message.image !== 'string'
+      || message.image.length > 32_000_000 || !/^data:image\/(png|jpeg|webp|gif);base64,/i.test(message.image)))) {
+    sendResponse({ ok: false, error: 'Unsupported or oversized capture.' });
+    return false;
+  }
+
   if (message.type === 'GET_IMAGE' && message.imageId != null) {
     (async () => {
       try {
@@ -463,6 +494,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     const senderTabId = sender?.tab?.id;
     try {
+
+      if (message.type === 'COLLECTION_GET') {
+        const data = await enqueueSave(loadData);
+        sendResponse({ ok: true, data });
+        return;
+      }
+      if (message.type === 'COLLECTION_PATCH') {
+        const data = await enqueueSave(async () => {
+          const currentData = await loadData();
+          const next = CacheTrayCollection.apply(currentData, message.patch);
+          await saveData(next);
+          return next;
+        });
+        sendResponse({ ok: true, data });
+        return;
+      }
+      if (message.type === 'COLLECTION_DELETE_IMAGE') {
+        const removed = await enqueueSave(() => imgDbDeleteIfUnreferenced(message.imageId));
+        sendResponse({ ok: true, removed });
+        return;
+      }
 
       if (message.type === 'TRANSFER_DEVICES') {
         const account = CacheTrayTransfer.configured() ? await CacheTrayTransfer.accountStatus().catch(() => null) : null;

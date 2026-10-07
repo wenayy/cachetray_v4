@@ -5,6 +5,7 @@ let lastTextHash = '';
 let lastImageHash = '';
 let activeReadPromise = null;
 let lastManualReadAt = 0;
+let pollingInProgress = false;
 
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
@@ -142,7 +143,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 // ── Poll loop ─────────────────────────────────────────────────────────────────
 
 async function pollClipboard() {
+  if (pollingInProgress) return;
+  pollingInProgress = true;
   try {
+    if ((await chrome.storage.local.get('qn_capture_enabled')).qn_capture_enabled === false) return;
     if (activeReadPromise) return;
     if (Date.now() - lastManualReadAt < MANUAL_READ_COOLDOWN_MS) return;
 
@@ -152,27 +156,26 @@ async function pollClipboard() {
     if (result.image) {
       const hash = imageHash(result.image);
       if (hash === lastImageHash) return;
-      lastImageHash = hash;
-      lastTextHash = '';
-      chrome.runtime.sendMessage({
+      const saved = await chrome.runtime.sendMessage({
         type: 'COPIED_IMAGE',
         image: result.image,
         mime: result.mime,
         source: 'poll'
-      }).catch(() => {});
+      });
+      if (saved?.ok) { lastImageHash = hash; lastTextHash = ''; }
 
     } else if (result.text) {
       const hash = textHash(result.text);
       if (!hash || hash === lastTextHash) return;
-      lastTextHash = hash;
-      lastImageHash = '';
-      chrome.runtime.sendMessage({
+      const saved = await chrome.runtime.sendMessage({
         type: 'COPIED_TEXT',
         text: result.text,
         source: 'poll'
-      }).catch(() => {});
+      });
+      if (saved?.ok) { lastTextHash = hash; lastImageHash = ''; }
     }
   } catch (_) {}
+  finally { pollingInProgress = false; }
 }
 
 setInterval(pollClipboard, POLL_MS);

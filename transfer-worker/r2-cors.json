@@ -1,0 +1,16 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "chrome-extension://pgohpbolcaaoenhaapkikmheckannlpn",
+          "https://cachetray.gitflex.lol"
+        ],
+        "methods": ["PUT", "GET"],
+        "headers": ["Content-Type"]
+      },
+      "exposeHeaders": ["ETag"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

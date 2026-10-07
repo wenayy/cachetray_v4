@@ -1,0 +1,128 @@
+CacheTray 1.7.8 — Chrome Web Store Privacy practices
+
+Copy each paragraph into the corresponding dashboard field. These are dashboard declarations, not changes to the extension permissions or ZIP. Each permission paragraph is below the dashboard's 1,000-character limit.
+
+SINGLE PURPOSE DESCRIPTION
+
+CacheTray helps users capture, organize and reuse clipboard and selected webpage content as context for their work and AI chats. It saves text, links, code, tasks and images in a local Chrome tray, provides search and workspaces, and lets users copy or insert selected clips into supported inputs. Optional QR phone pairing makes those same clips available on a paired phone through temporary cloud transfers. While capture is enabled, selecting webpage text copies it to the clipboard and saves it; users can pause capture anytime.
+
+STORAGE JUSTIFICATION
+
+CacheTray uses chrome.storage.local for saved clip metadata, workspace names, favourites, category and theme preferences, capture settings, pairing credentials and subscription recovery settings. Images are stored locally in IndexedDB. This allows the popup, side panel and background worker to use the same saved tray. Local storage is the default; optional phone pairing enables temporary cloud sync of recent text, links, code and tasks, and images upload only when the user sends them.
+
+UNLIMITEDSTORAGE JUSTIFICATION
+
+CacheTray stores user-captured screenshots and images locally in IndexedDB, alongside clip metadata in chrome.storage.local. Image collections can exceed the normal extension storage quota. unlimitedStorage allows this core clipboard-history feature to retain those local assets without the default quota and storage eviction constraints. Local items expire after 3 days and users can delete them earlier. This permission does not mean unlimited cloud storage or unlimited phone transfers; those have separate server-enforced limits.
+
+CONTEXTMENUS JUSTIFICATION
+
+CacheTray provides right-click actions to save selected text, a link, an image or the current page into the user's tray. These actions let users collect context directly from supported webpages without opening the extension popup first. Saving an image may fetch that image URL to store it locally.
+
+ACTIVETAB JUSTIFICATION
+
+CacheTray uses activeTab for user-triggered actions involving the current tab, such as saving its URL/title or inserting selected tray content into a supported focused input. This lets the user reuse clips in their current work or AI chat. Automatic capture across supported webpages is provided separately by the disclosed HTTP/HTTPS host permissions; activeTab is not used to obtain a general browsing-history list.
+
+SCRIPTING JUSTIFICATION
+
+CacheTray uses scripting to register and inject its packaged content script on supported HTTP/HTTPS webpages. The script detects trusted copy and text-selection gestures while capture is enabled, saves selected content, and copies selected webpage text for immediate pasting. On user request, packaged insertion functions put chosen tray text or images into supported page inputs, including AI chat composers. Password fields and editable text fields are excluded from automatic selection capture. Capture can be paused.
+
+OFFSCREEN JUSTIFICATION
+
+CacheTray uses an extension-owned offscreen document to read clipboard text and images while automatic capture is enabled. Manifest V3 service workers cannot directly use document/DOM clipboard operations, so the offscreen document performs these operations and returns captured content to the background worker for local storage. It supports screenshot/image capture and an on-demand clipboard check without requiring the popup to remain open. This document and its JavaScript are included in the extension package.
+
+CLIPBOARDREAD JUSTIFICATION
+
+CacheTray reads clipboard text and images to save copied screenshots, links, code snippets and notes into the user's local tray while automatic capture is enabled. This is the extension's clipboard-history function. Users can pause capture at any time. When a phone is paired, recent saved non-image clips can sync to it through the disclosed temporary cloud service; copied images upload only when the user chooses Send to Phone.
+
+CLIPBOARDWRITE JUSTIFICATION
+
+CacheTray writes selected webpage text to the clipboard while automatic capture is enabled, so highlighting text lets the user paste it elsewhere without a separate copy shortcut. It also writes saved text or images when the user chooses a Copy action in the extension. Automatic selection copying replaces the prior clipboard contents, is available on Free and Pro, skips password/editable fields, and stops when capture is paused.
+
+SIDEPANEL JUSTIFICATION
+
+CacheTray uses sidePanel to show the user's tray alongside their current webpage. Users can search, filter, organize and select saved text, links, code, tasks and images, then copy or insert chosen context into supported inputs and AI chats. The side panel provides persistent access to the same collection as the popup without repeatedly opening it.
+
+ALARMS JUSTIFICATION
+
+CacheTray uses alarms to run local 3-day expiry cleanup, remove unreferenced stored images after cleanup, refresh paired-phone connection status and periodically sync eligible recent non-image clips to paired phones. Alarms allow these scheduled tasks to run when the popup and side panel are closed and the Manifest V3 background worker would otherwise be suspended. They support the disclosed clipboard-history and optional phone-transfer features.
+
+HOST PERMISSION JUSTIFICATION
+
+CacheTray needs HTTP/HTTPS host access because clipboard and selected-text capture must work on supported webpages where users gather context, rather than only a fixed list of AI websites. Packaged content scripts detect trusted copy/selection gestures and copy/save selected text while capture is enabled. On explicit user actions, the extension saves page URLs/titles, fetches chosen images, and inserts selected clips into supported page inputs. Host access also supports HTTPS requests to the phone-transfer and billing service and temporary image upload/download endpoints. Captured clips are stored locally by default; pairing enables temporary cloud sync of recent non-image clips, and images upload when sent. It does not read a complete browser-history list or use captured content for advertising.
+
+REMOTE CODE
+
+Select: No, I am not using remote code.
+
+All executable extension JavaScript, including registered content scripts, QR generation and insertion functions, is packaged in the ZIP. HTTPS API requests retrieve data and transfer URLs; opening the separate website or payment checkout does not load its executable code into the extension. Do not select Yes merely because the extension communicates with its backend.
+
+DATA USAGE CHECKBOXES — RECOMMENDATIONS FROM CURRENT FUNCTIONALITY
+
+These classifications apply to data handled by the extension and its associated services, including local processing. They are not a claim that CacheTray reads every example listed beside a checkbox. Use these explanations when reviewing the selections:
+
+[CHECK] Website content
+Captured/selected text, images, screenshots, links and code are the central feature. Optional phone sync transfers that content.
+
+[CHECK] Authentication information
+Device authentication tokens, pairing credentials and private subscription recovery keys authorize access. No account is required for pairing, but credentials are still handled.
+
+[CHECK] Financial and payment information
+Optional Pro checkout and subscription status, transaction/subscription identifiers and billing records. Dodo processes payment details; CacheTray does not receive full card details.
+
+[CHECK] Personally identifiable information
+Optional Dodo checkout handles customer/contact and billing details, and support email handles the sender's email and message. The service also uses persistent device/customer identifiers. The extension does not require a personal account for local use or QR pairing.
+
+[CHECK] Web history
+Saved current-tab URLs/titles, saved links and page context used to label captured items disclose limited browsing-related information. This is not a record of every page visited and the extension does not request chrome.history.
+
+[CHECK] User activity
+Capture timestamps, phone connection activity and image-send usage records support the tray and plan limits. The content script responds to copy/selection gestures. This is not advertising tracking, general keystroke logging or recording all mouse movement.
+
+[CHECK] Location
+Cloudflare processes request IP addresses for hosting and security. The dashboard includes IP addresses in this category. The extension does not request GPS or a geolocation permission and does not use location for advertising.
+
+[CHECK WHEN HANDLED] Personal communications
+Copied or selected emails and chat messages, screenshots containing conversations, and communications submitted to support can be handled. For a general clipboard manager that allows users to save/share these communications, checking this category is the conservative disclosure. It does not mean the extension independently scans inboxes or conversations.
+
+[CHECK WHEN HANDLED] Health information
+There is no dedicated health-data feature or medical integration. If health information is captured, stored or transferred as part of users' supported clipboard workflows, declare it as well. Do not claim that a general text/image clipboard can never contain health information. This category requires reviewing the actual content you support, not just the permissions list.
+
+Do not leave only Website content checked for this release: device authentication, paid subscriptions and associated service records must also be reflected. Personal communications and health information need a decision based on the actual workflows/content handled; the presence of a generic clipboard permission alone does not establish a specialised email or medical collection feature.
+
+THREE LIMITED-USE CERTIFICATIONS
+
+Keep all three checked only while they remain true:
+1. User data is not sold or transferred outside approved uses needed for the disclosed features, security or other allowed purposes.
+2. Data is not used for purposes unrelated to CacheTray's single purpose.
+3. Data is not used for creditworthiness or lending decisions.
+
+Cloudflare hosting/storage, Dodo billing and a destination the user chooses for AI insertion/sharing must be disclosed in the privacy policy. Using these services does not by itself contradict the first certification, which allows approved transfers necessary for functionality.
+
+PRIVACY POLICY URL
+
+https://cachetray.gitflex.lol/privacy.html
+
+Replace the old cachetray.weenay.com/privacy address. The updated policy includes selection copying, pairing, cloud transfer and billing and was published to the production Cloudflare Pages site on October 8, 2026. Use the live URL above in the dashboard.
+
+IMPORTANT CORRECTIONS TO THE OLD TEXT
+
+Do not say all data always stays on the device or is never transmitted. Phone pairing enables cloud transfers.
+Do not say no webpage content is read or stored: user-selected and copied content is read and saved.
+Do not describe clipboardWrite as only a Copy-button permission: selection copying uses it too.
+Do not say offscreen is the only supported clipboard method in MV3: it is the method this extension uses for its background clipboard operations.
+Complete the previously empty unlimitedStorage and alarms fields.
+The all-sites host-access warning can remain even with accurate explanations; the justification does not guarantee a shorter review or approval.
+
+OFFICIAL REFERENCES
+
+Privacy fields and permission justifications:
+https://developer.chrome.com/docs/webstore/cws-dashboard-privacy
+
+Local processing, disclosures and Limited Use:
+https://developer.chrome.com/docs/webstore/program-policies/user-data-faq
+
+Privacy policy requirements:
+https://developer.chrome.com/docs/webstore/program-policies/privacy
+
+Offscreen API:
+https://developer.chrome.com/docs/extensions/reference/api/offscreen

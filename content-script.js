@@ -2,7 +2,6 @@
   if (window.__quicknotesContentLoaded) return;
   window.__quicknotesContentLoaded = true;
 
-  const INJECTED_MESSAGE_SOURCE = '__quicknotes_injected';
   const INTERACTION_READ_DELAY_MS = 180;
   const STORAGE_KEY = 'quicknotes_v1';
   let interactionReadTimer = 0;
@@ -93,7 +92,7 @@
     }
   }
 
-  function showCaptureToast(itemType, preview, failed = false) {
+  function showCaptureToast(itemType, preview, failed = false, statusLabel = '') {
     const TYPE_META = {
       link:  { label: 'Link',    color: '#60a5fa', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' },
       image: { label: 'Image',   color: '#fbbf24', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' },
@@ -144,7 +143,7 @@
     Object.assign(brand.style, { color: '#c8f060', fontSize: '10px', fontWeight: '700', letterSpacing: '0.3px', flex: '1' });
 
     const badge = document.createElement('span');
-    badge.textContent = failed ? 'not saved' : 'captured';
+    badge.textContent = statusLabel || (failed ? 'not saved' : 'captured');
     Object.assign(badge.style, {
       fontSize: '9px', color: '#555', letterSpacing: '0.5px',
       textTransform: 'uppercase', fontWeight: '600'
@@ -164,7 +163,7 @@
     Object.assign(iconWrap.style, { color: meta.color, display: 'flex', flexShrink: '0' });
 
     const typeLabel = document.createElement('span');
-    typeLabel.textContent = failed ? 'Image was not saved' : `${meta.label} saved`;
+    typeLabel.textContent = statusLabel || (failed ? 'Image was not saved' : `${meta.label} saved`);
     Object.assign(typeLabel.style, { color: '#e8e5e0', fontSize: '12px', fontWeight: '600' });
 
     typeRow.appendChild(iconWrap); typeRow.appendChild(typeLabel);
@@ -198,19 +197,6 @@
     anim.finished.finally(() => {
       try { toast.remove(); if (!wrapper.children.length) wrapper.remove(); } catch (_) {}
     });
-  }
-
-  function injectPageScript() {
-    try {
-      if (document.documentElement.dataset.quicknotesInjected === 'true') return;
-      document.documentElement.dataset.quicknotesInjected = 'true';
-      const script = document.createElement('script');
-      script.src = chrome.runtime.getURL('injected.js');
-      script.onload = () => script.remove();
-      (document.head || document.documentElement).appendChild(script);
-    } catch (error) {
-      // ignore
-    }
   }
 
   async function sendCopiedText(rawText, source) {
@@ -361,6 +347,7 @@
   document.addEventListener(
     'copy',
     (event) => {
+      if (!event.isTrusted) return;
       const text = getCopiedText(event);
       window.clearTimeout(interactionReadTimer);
 
@@ -376,6 +363,7 @@
   document.addEventListener(
     'cut',
     (event) => {
+      if (!event.isTrusted) return;
       const text = getCopiedText(event);
       window.clearTimeout(interactionReadTimer);
       if (text) {
@@ -387,21 +375,113 @@
 
   document.addEventListener('keydown', onKeydownInteraction, true);
 
-  window.addEventListener('message', (event) => {
-    if (event.source !== window) return;
-    const data = event.data;
-    if (!data || data.source !== INJECTED_MESSAGE_SOURCE) return;
-    const payload = data.payload;
-    if (!payload || !payload.type) return;
+  // Save settled, user-made selections and copy them for immediate pasting.
+  let selectionCaptureTimer = 0;
+  let selectionPointerDown = false;
 
-    if (payload.type === 'COPIED_TEXT' && typeof payload.text === 'string') {
-      sendCopiedText(payload.text, 'injected-writeText').catch(() => {});
-    }
+  function selectionNodeExcluded(node) {
+    const element = node?.nodeType === 1 ? node : node?.parentElement;
+    if (!element) return true;
+    if (element.isContentEditable || element.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]')) return true;
+    const host = element.getRootNode?.().host;
+    return Boolean(host && (host.id?.startsWith('ct-') || selectionNodeExcluded(host)));
+  }
 
-    if (payload.type === 'COPIED_IMAGE' && typeof payload.image === 'string') {
-      sendCopiedImage(payload.image, payload.mime, 'injected-write').catch(() => {});
+  function selectedPageText() {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.rangeCount
+      || selectionNodeExcluded(selection.anchorNode) || selectionNodeExcluded(selection.focusNode)) return '';
+    // A selection can start/end outside an editor while spanning its contents.
+    const range = selection.getRangeAt(0);
+    const root = range.commonAncestorContainer.nodeType === 1
+      ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+    for (const editor of root?.querySelectorAll('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]') || []) {
+      if (range.intersectsNode(editor)) return '';
     }
-  });
+    const text = normalizeClipboardText(selection.toString());
+    return text.length <= 1_000_000 ? text : '';
+  }
+
+  function cancelSelectionCapture() {
+    window.clearTimeout(selectionCaptureTimer);
+  }
+
+  async function copySelectedText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {
+      // HTTP pages may lack the async clipboard API. Chrome's clipboardWrite
+      // permission also allows a plain-text copy through a temporary textarea.
+      const selection = window.getSelection();
+      const ranges = Array.from({ length: selection?.rangeCount || 0 }, (_, i) => selection.getRangeAt(i).cloneRange());
+      const activeElement = document.activeElement;
+      const previousFocusedEl = lastFocusedEl;
+      const target = document.createElement('textarea');
+      target.value = text;
+      target.setAttribute('aria-hidden', 'true');
+      Object.assign(target.style, { position: 'fixed', left: '-9999px', top: '0', opacity: '0' });
+      (document.body || document.documentElement).appendChild(target);
+      try {
+        target.select();
+        return document.execCommand('copy');
+      } catch (_) {
+        return false;
+      } finally {
+        target.remove();
+        activeElement?.focus({ preventScroll: true });
+        selection?.removeAllRanges();
+        ranges.forEach(range => selection?.addRange(range));
+        lastFocusedEl = previousFocusedEl;
+      }
+    }
+  }
+
+  function scheduleSelectionCapture(event) {
+    if (!event.isTrusted || event.composedPath?.().some(node => node?.id?.startsWith('ct-'))) return;
+    cancelSelectionCapture();
+    const text = selectedPageText();
+    if (!text) return;
+    selectionCaptureTimer = window.setTimeout(async () => {
+      try {
+        const state = await chrome.storage.local.get('qn_capture_enabled');
+        if (state.qn_capture_enabled === false || selectionPointerDown
+          || document.visibilityState === 'hidden' || selectedPageText() !== text) return;
+        const copied = await copySelectedText(text);
+        await sendCopiedText(text, 'selection');
+        if (!copied) showCaptureToast('text', 'Press Cmd+C or Ctrl+C to copy this selection.', false, 'Auto-copy blocked');
+      } catch (_) {
+        // A disconnected/updated extension must not replace the clipboard.
+      }
+    }, event.type === 'keyup' ? 120 : 0);
+  }
+
+  document.addEventListener('pointerdown', event => {
+    if (!event.isTrusted) return;
+    selectionPointerDown = true;
+    cancelSelectionCapture();
+  }, true);
+  document.addEventListener('pointerup', event => {
+    if (!event.isTrusted) return;
+    selectionPointerDown = false;
+    scheduleSelectionCapture(event);
+  }, true);
+  document.addEventListener('pointercancel', event => {
+    if (!event.isTrusted) return;
+    selectionPointerDown = false;
+    cancelSelectionCapture();
+  }, true);
+  document.addEventListener('keydown', event => {
+    if (event.isTrusted) cancelSelectionCapture();
+  }, true);
+  document.addEventListener('keyup', event => {
+    const extendsSelection = event.shiftKey && /^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End|PageUp|PageDown|Shift)$/.test(event.key);
+    const selectsAll = (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'a';
+    if (extendsSelection || selectsAll) scheduleSelectionCapture(event);
+  }, true);
+
+  // Programmatic copy buttons are captured by extension-owned clipboard polling.
+  // Never accept image/text payloads from the page's window.postMessage bridge.
 
 
   // ── Insert into focused element ────────────────────────────────────────────
@@ -667,31 +747,43 @@
       return;
     }
 
-    list.innerHTML = _paletteFiltered.map((note, i) => {
+    list.replaceChildren();
+    _paletteFiltered.forEach((note, i) => {
       const isSelected = i === _paletteSelected;
-      const preview = (note.content || '').slice(0, 120);
-      const escapedPreview = preview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const row = document.createElement('div');
+      row.className = `ct-item${isSelected ? ' ct-sel' : ''}`;
+      row.dataset.idx = i;
       if (note.type === 'image') {
-        const thumbAttr = note.imageId != null ? `data-image-id="${note.imageId}"` : '';
-        const thumbEl = note.dataUrl
-          ? `<img class="ct-thumb" src="${note.dataUrl}" />`
-          : note.imageId != null
-            ? `<div class="ct-thumb-ph" ${thumbAttr}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div>`
-            : `<div class="ct-thumb-ph"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div>`;
-        return `<div class="ct-item${isSelected ? ' ct-sel' : ''}" data-idx="${i}">
-          ${thumbEl}
-          <div class="ct-text">${escapedPreview}</div>
-          <div class="ct-time">${_timeAgo(note.time)}</div>
-          <div class="ct-enter-hint">↵ copy</div>
-        </div>`;
+        if (/^data:image\/(png|jpeg|webp|gif);base64,/i.test(note.dataUrl || '')) {
+          const thumb = document.createElement('img');
+          thumb.className = 'ct-thumb';
+          thumb.src = note.dataUrl;
+          row.appendChild(thumb);
+        } else {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'ct-thumb-ph';
+          if (note.imageId != null) placeholder.dataset.imageId = note.imageId;
+          placeholder.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg>';
+          row.appendChild(placeholder);
+        }
+      } else {
+        const dot = document.createElement('div');
+        dot.className = 'ct-dot';
+        dot.style.backgroundColor = _typeColor(note.type);
+        row.appendChild(dot);
       }
-      return `<div class="ct-item${isSelected ? ' ct-sel' : ''}" data-idx="${i}">
-        <div class="ct-dot" style="background:${_typeColor(note.type)}"></div>
-        <div class="ct-text">${escapedPreview}</div>
-        <div class="ct-time">${_timeAgo(note.time)}</div>
-        <div class="ct-enter-hint">↵ copy</div>
-      </div>`;
-    }).join('');
+      const text = document.createElement('div');
+      text.className = 'ct-text';
+      text.textContent = (note.content || '').slice(0, 120);
+      const time = document.createElement('div');
+      time.className = 'ct-time';
+      time.textContent = _timeAgo(note.time);
+      const hint = document.createElement('div');
+      hint.className = 'ct-enter-hint';
+      hint.textContent = '↵ copy';
+      row.append(text, time, hint);
+      list.appendChild(row);
+    });
 
     list.querySelectorAll('.ct-item').forEach((el) => {
       el.addEventListener('click', () => {
@@ -893,6 +985,5 @@
     }
   });
 
-  injectPageScript();
   loadLastStored().catch(() => {});
 })();

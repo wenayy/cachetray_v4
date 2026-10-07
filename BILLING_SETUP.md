@@ -23,7 +23,7 @@ Plans belong to a random Mac installation identity, not a login account. The use
 
    ```sh
    npx wrangler secret put DODO_API_KEY
-   npx wrangler secret put DODO_WEBHOOK_SECRET
+
    ```
 
    If you see “Required Worker name missing”, you are probably still in the extension root. Alternatively, stay in the project root and use `npx wrangler secret put DODO_API_KEY --config transfer-worker/wrangler.jsonc` (repeat for `DODO_WEBHOOK_SECRET`). Paste the secret only when prompted, never after a pipe or into a shared file. Use newly rotated test credentials if earlier values were exposed.

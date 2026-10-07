@@ -5,8 +5,8 @@ const { execFileSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const files = [
-  'manifest.json', 'background.js', 'content-script.js', 'injected.js',
-  'offscreen.html', 'offscreen.js', 'shared.js', 'popup.html', 'popup.css', 'popup.js',
+  'manifest.json', 'background.js', 'content-script.js',
+  'offscreen.html', 'offscreen.js', 'shared.js', 'collection-store.js', 'popup.html', 'popup.css', 'popup.js',
   'sidebar.html', 'sidebar.css', 'theme-boot.js', 'qr-code.js', 'transfer-config.js',
   'transfer-controller.js', 'transfer-ui.js', 'billing-ui.js', 'cloud-controller.js',
   'cloud-sync.js', 'cloud-ui.js', 'firebase-config.js', 'image-health.html',

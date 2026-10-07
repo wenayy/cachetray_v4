@@ -198,7 +198,7 @@ footer {
 <main>
   <div class="pp-badge">🔐 Privacy Policy</div>
   <h1>Your prompt context<br>stays yours.</h1>
-  <div class="updated">Last updated: October 6, 2026</div>
+  <div class="updated">Last updated: October 8, 2026</div>
   <p>This policy covers the CacheTray Chrome extension, the website at cachetray.gitflex.lol, the phone web app, and optional Pro billing.</p>
 
   <div class="tl-dr">
@@ -220,6 +220,8 @@ footer {
     <li>Auto-capture toggle state (on/off)</li>
   </ul>
   <p>This data stays in browser-managed storage by default. Pairing a phone enables the transfer and automatic clip-sync features described below. The phone web app stores its device credentials and preferences in browser storage and caches app files so it can be opened from your home screen.</p>
+
+  <p><strong>Selected webpage text.</strong> While auto-capture is enabled, highlighting webpage text copies that selection to your system clipboard and saves it locally in CacheTray, so you can paste it elsewhere. This replaces the previous clipboard contents. Selection capture excludes password fields and editable text fields. Use the capture toggle to pause automatic selection copying and saving. If phone clip sync is enabled, these saved selections sync to your paired phone with the same limits and retention as other text clips.</p>
 
   <h2>What we do NOT collect</h2>
   <ul>
@@ -247,16 +249,16 @@ footer {
     </thead>
     <tbody>
       <tr><td class="perm-name">clipboardRead</td><td>To automatically detect and save copied prompt assets (Ctrl+C) into your local workspace.</td></tr>
-      <tr><td class="perm-name">clipboardWrite</td><td>To copy a saved item back to your clipboard when you click copy inside the extension.</td></tr>
+      <tr><td class="perm-name">clipboardWrite</td><td>To copy selected webpage text while capture is enabled and copy saved items when you choose Copy. Selection copying replaces the previous clipboard contents and stops when capture is paused.</td></tr>
       <tr><td class="perm-name">storage</td><td>To save your notes, workspaces, and preferences locally, plus opt-in pairing information.</td></tr>
       <tr><td class="perm-name">unlimitedStorage</td><td>To retain locally saved image data without the extension's usual storage quota. Available disk space and browser behavior still apply.</td></tr>
       <tr><td class="perm-name">alarms</td><td>To schedule local expiry cleanup and refresh clips for paired phones.</td></tr>
       <tr><td class="perm-name">activeTab</td><td>To read the current tab's URL and title when you click "Save current tab". Only triggered by your explicit action.</td></tr>
-      <tr><td class="perm-name">scripting</td><td>To inject a lightweight script that detects copy events and inserts selected text/images into focused inputs such as AI chat composers.</td></tr>
+      <tr><td class="perm-name">scripting</td><td>To inject packaged scripts that detect trusted copy/selection gestures and insert selected text/images into supported focused inputs such as AI chat composers.</td></tr>
       <tr><td class="perm-name">contextMenus</td><td>To add right-click options — Save link, Save image, Save selection — directly from any webpage.</td></tr>
       <tr><td class="perm-name">offscreen</td><td>To access clipboard data and process images through an offscreen document in Chrome Manifest V3.</td></tr>
       <tr><td class="perm-name">sidePanel</td><td>To open CacheTray as a persistent side panel beside Claude, ChatGPT, NotebookLM, docs, or research tabs. No data is transmitted by opening the panel.</td></tr>
-      <tr><td class="perm-name">HTTP/HTTPS host access</td><td>To detect copied content on supported webpages, fetch images you save, insert selected clips into focused inputs, and contact the phone-transfer service. It is not used to collect your general browsing history.</td></tr>
+      <tr><td class="perm-name">HTTP/HTTPS host access</td><td>To detect copied and selected content on supported webpages, fetch images you save, insert selected clips into focused inputs, and contact the phone-transfer service. It is not used to collect your general browsing history.</td></tr>
     </tbody>
   </table>
 
@@ -266,6 +268,7 @@ footer {
   <p>The website loads Google Fonts and may load third-party embeds such as the Product Hunt badge. Those providers receive the requests needed to display these resources. External services and email providers handle information according to their own policies. Hosting and payment services may process data outside your country.</p>
 
   <h2>How we use and protect information</h2>
+  <p>CacheTray's use and transfer of user data follow the Chrome Web Store User Data Policy, including its Limited Use requirements. We use captured content only to provide the disclosed clipboard, AI insertion and paired-phone features. Transfers to service providers support those features, billing and security. We do not use captured content for personalised advertising or creditworthiness decisions. Human access is limited to permitted purposes such as support with your consent, security or legal obligations.</p>
   <p>We use data to provide the features you choose, deliver clips to paired devices, verify Pro subscriptions, enforce usage limits, prevent abuse and respond to support requests. We do not sell your clipboard content or use it for advertising or AI model training.</p>
   <p>Transfers use HTTPS, authenticated device requests and short-lived image URLs. Cloud phone transfers are not end-to-end encrypted: the service processes synced clip content and stores uploaded images. Keep device credentials, recovery keys and signed image URLs private. No online service can guarantee absolute security.</p>
 

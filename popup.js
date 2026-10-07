@@ -1,6 +1,6 @@
 const {
   STORAGE_KEY, CAPTURE_KEY, COLORS, CAT_LIMIT,
-  imgDbStore, imgDbGet, imgDbGetRetry, imgDbDeleteIfUnreferenced,
+  imgDbStore, imgDbGet, imgDbGetRetry,
   imageComparisonKey, normalizeStoredData,
   looksLikeUrl, toLinkUrl, looksLikeCode, detectType, guessLang,
   injectImagesFunc,
@@ -14,11 +14,17 @@ const imgObjectUrlCache = new Map();
 
 async function getImageObjectUrl(note) {
   if (note.imageId == null) return note.dataUrl || note.imageUrl || null;
-  if (imgObjectUrlCache.has(note.id)) return imgObjectUrlCache.get(note.id);
-  const blob = await imgDbGetRetry(note.imageId);
+  const cached = imgObjectUrlCache.get(note.id);
+  if (cached?.imageId === note.imageId) return cached.url;
+  if (cached) revokeImgCache(note.id);
+  const imageId = note.imageId;
+  const blob = await imgDbGetRetry(imageId);
+  if (note.imageId !== imageId) return getImageObjectUrl(note);
+  const resolved = imgObjectUrlCache.get(note.id);
+  if (resolved?.imageId === imageId) return resolved.url;
   if (!blob) return note.dataUrl || note.imageUrl || note.thumb || null;
   const url = URL.createObjectURL(blob);
-  imgObjectUrlCache.set(note.id, url);
+  imgObjectUrlCache.set(note.id, { url, imageId });
   return url;
 }
 
@@ -43,8 +49,8 @@ function generateThumb(blob) {
 }
 
 function revokeImgCache(noteId) {
-  const url = imgObjectUrlCache.get(noteId);
-  if (url) { URL.revokeObjectURL(url); imgObjectUrlCache.delete(noteId); }
+  const cached = imgObjectUrlCache.get(noteId);
+  if (cached) { URL.revokeObjectURL(cached.url); imgObjectUrlCache.delete(noteId); }
 }
 
 let uid = 0;
@@ -59,6 +65,41 @@ let captureEnabled = true;
 let searchQuery = '';
 let searchAllWorkspaces = false;
 let imageViewMode = localStorage.getItem('ct_imageViewMode') || 'list';
+let collectionLoaded = false;
+const collectionClient = new CacheTrayCollection.Client({
+  send: patch => chrome.runtime.sendMessage({ type: 'COLLECTION_PATCH', patch }),
+  snapshot: () => structuredClone({ clusters, uid, current, currentCat }),
+  update: applyCollectionState,
+  onError: error => showToast(`Not saved: ${error.message}`)
+});
+
+function applyCollectionState(data) {
+  // Keep live note objects stable across updates while an image operation awaits I/O.
+  const existing = new Map(Object.entries(clusters).flatMap(([name, workspace]) =>
+    workspace.notes.map(note => [`${CacheTrayCollection.workspaceId(workspace, name)}:${note.id}`, note])));
+  for (const [name, workspace] of Object.entries(data.clusters)) {
+    workspace.notes = workspace.notes.map(note => {
+      const previous = existing.get(`${workspace.id}:${note.id}`);
+      if (!previous) return note;
+      if (previous.imageId !== note.imageId || previous.dataUrl !== note.dataUrl) revokeImgCache(previous.id);
+      for (const key of Object.keys(previous)) if (!Object.hasOwn(note, key)) delete previous[key];
+      return Object.assign(previous, note);
+    });
+  }
+  const remaining = new Set(Object.values(data.clusters).flatMap(workspace => workspace.notes.map(note => note.id)));
+  for (const id of imgObjectUrlCache.keys()) if (!remaining.has(id)) revokeImgCache(id);
+  clusters = data.clusters;
+  uid = data.uid || 0;
+  current = data.current;
+  currentCat = data.currentCat || 'all';
+  if (collectionLoaded) renderAll();
+}
+
+async function imgDbDeleteIfUnreferenced(imageId) {
+  const response = await chrome.runtime.sendMessage({ type: 'COLLECTION_DELETE_IMAGE', imageId });
+  if (!response?.ok) throw new Error(response?.error || 'Image cleanup failed');
+  return response.removed;
+}
 
 function isLightTheme() {
   return document.documentElement.classList.contains('light');
@@ -83,15 +124,7 @@ function linkDisplayName(href) {
 }
 
 function saveData() {
-  return chrome.storage.local.set({
-    [STORAGE_KEY]: {
-      clusters,
-      uid,
-      current,
-      currentCat,
-      modifiedAt: Date.now()
-    }
-  });
+  return collectionClient.save();
 }
 
 function seedDemoData() {
@@ -99,22 +132,22 @@ function seedDemoData() {
   const min = 60 * 1000;
   clusters.inbox.notes = [
     {
-      id: ++uid, type: 'text', time: now,
+      id: crypto.randomUUID(), type: 'text', time: now,
       content: 'Welcome to CacheTray! Copy anything on any website — links, screenshots, code — and it appears here instantly. Try it: copy any text or image right now.'
     },
     {
-      id: ++uid, type: 'link', time: now - 6 * min,
+      id: crypto.randomUUID(), type: 'link', time: now - 6 * min,
       content: 'chromewebstore.google.com',
       url: 'https://chromewebstore.google.com'
     },
     {
-      id: ++uid, type: 'code', time: now - 12 * min,
+      id: crypto.randomUUID(), type: 'code', time: now - 12 * min,
       content: '// CacheTray auto-detects code snippets',
       full: '// CacheTray auto-detects code snippets\nconst tray = "paste any code and it lands here";\nconsole.log(tray);',
       lang: 'js'
     },
     {
-      id: ++uid, type: 'text', time: now - 25 * min,
+      id: crypto.randomUUID(), type: 'text', time: now - 25 * min,
       content: 'Open CacheTray anytime with Ctrl+Shift+Y  (⌘+Shift+Y on Mac) — no need to click the toolbar icon.'
     },
   ];
@@ -122,18 +155,10 @@ function seedDemoData() {
 }
 
 async function loadData() {
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
-  const parsed = stored[STORAGE_KEY];
-  if (parsed?.clusters) {
-    const normalized = normalizeStoredData(parsed);
-    clusters = normalized.clusters;
-    uid = normalized.uid || 0;
-    current = normalized.current || 'inbox';
-    currentCat = normalized.currentCat || 'all';
-  } else {
-    seedDemoData();
-  }
-  if (!clusters[current]) current = Object.keys(clusters)[0] || 'inbox';
+  const response = await chrome.runtime.sendMessage({ type: 'COLLECTION_GET' });
+  if (!response?.ok || !response.data) throw new Error(response?.error || 'Could not load your saved clips.');
+  collectionClient.initialize(normalizeStoredData(response.data));
+  collectionLoaded = true;
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -143,13 +168,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
   if (changes[STORAGE_KEY]) {
     const next = normalizeStoredData(changes[STORAGE_KEY].newValue);
-    if (!next?.clusters) return;
-    clusters = next.clusters;
-    uid = next.uid || 0;
-    current = next.current || current;
-    currentCat = next.currentCat || currentCat;
-    if (!clusters[current]) current = Object.keys(clusters)[0] || 'inbox';
-    renderAll();
+    if (collectionLoaded && next?.clusters) collectionClient.receive(next);
   }
 });
 
@@ -470,6 +489,7 @@ function renderTabs() {
   add.onclick = async () => {
     const tempKey = `cluster ${Object.keys(clusters).length + 1}`;
     clusters[tempKey] = {
+      id: crypto.randomUUID(),
       color: COLORS[Object.keys(clusters).length % COLORS.length],
       notes: []
     };
@@ -1185,7 +1205,16 @@ function renderFeed() {
       const empty = document.createElement('div');
       empty.className = 'search-empty';
       if (query) {
-        empty.innerHTML = `<span class="search-empty-main">No results for "<strong>${query}</strong>"${typeFilter ? ` in ${typeFilter}s` : ''}</span><span class="search-empty-hint">Try fewer words or a different filter</span>`;
+        const main = document.createElement('span');
+        main.className = 'search-empty-main';
+        main.append(document.createTextNode('No results for "'));
+        const strong = document.createElement('strong');
+        strong.textContent = query;
+        main.append(strong, document.createTextNode(`"${typeFilter ? ` in ${typeFilter}s` : ''}`));
+        const hint = document.createElement('span');
+        hint.className = 'search-empty-hint';
+        hint.textContent = 'Try fewer words or a different filter';
+        empty.append(main, hint);
       } else {
         empty.innerHTML = `<span class="search-empty-main">No ${typeFilter}s yet</span><span class="search-empty-hint">Copy something to add to your AI prompt</span>`;
       }
@@ -1200,7 +1229,10 @@ function renderFeed() {
         const badge = document.createElement('div');
         badge.className = 'ws-badge';
         const color = clusters[ws]?.color || '#888';
-        badge.innerHTML = `<span class="ws-dot" style="background:${color}"></span>${ws}`;
+        const dot = document.createElement('span');
+        dot.className = 'ws-dot';
+        dot.style.backgroundColor = color;
+        badge.append(dot, document.createTextNode(ws));
         row.appendChild(badge);
       }
       feed.appendChild(row);
@@ -1262,7 +1294,7 @@ async function deleteNote(id) {
   const notes = clusters[current].notes;
   const index = notes.findIndex((item) => item.id === id);
   if (index < 0) return;
-  lastDel = { note: notes[index], cluster: current, idx: index };
+  lastDel = { note: notes[index], cluster: current, workspaceId: CacheTrayCollection.workspaceId(clusters[current], current), idx: index };
   notes.splice(index, 1);
   await saveData();
   renderCats();
@@ -1295,7 +1327,9 @@ function hideUndo() {
 
 async function undoDelete() {
   if (!lastDel) return;
-  clusters[lastDel.cluster].notes.splice(lastDel.idx, 0, lastDel.note);
+  const destination = Object.entries(clusters).find(([name, workspace]) => CacheTrayCollection.workspaceId(workspace, name) === lastDel.workspaceId);
+  if (!destination) { hideUndo(); showToast('Cannot undo: that workspace was deleted.'); return; }
+  destination[1].notes.splice(lastDel.idx, 0, lastDel.note);
   lastDel = null;
   clearTimeout(undoTimer);
   await saveData();
@@ -1387,7 +1421,7 @@ function flashFirst() {
 async function addNote(text, forcedType) {
   const noteType = forcedType === 'task' ? 'task' : (forcedType === 'text' ? 'text' : detectType(text));
   const note = {
-    id: ++uid,
+    id: crypto.randomUUID(),
     type: noteType,
     content: text,
     time: Date.now()
@@ -1420,7 +1454,7 @@ async function addNote(text, forcedType) {
 
 async function addLinkNote(content, url) {
   const note = {
-    id: ++uid,
+    id: crypto.randomUUID(),
     type: 'link',
     content,
     url,
@@ -1518,7 +1552,7 @@ async function addImageNote(file) {
     console.warn('CacheTray: IndexedDB image write failed; retaining inline image', error);
     const dataUrl = rawDataUrl;
     const note = {
-      id: ++uid, type: 'image',
+      id: crypto.randomUUID(), type: 'image',
       content: smartImageName(file.name),
       dataUrl, imageHash, time: Date.now()
     };
@@ -1528,7 +1562,7 @@ async function addImageNote(file) {
   }
 
   const note = {
-    id: ++uid,
+    id: crypto.randomUUID(),
     type: 'image',
     content: smartImageName(file.name),
     imageId,
@@ -1840,7 +1874,7 @@ async function saveCurrentTab() {
     showToast('Already saved');
     return;
   }
-  const note = { id: ++uid, type: 'link', content: tab.title || tab.url, url: tab.url, time: Date.now() };
+  const note = { id: crypto.randomUUID(), type: 'link', content: tab.title || tab.url, url: tab.url, time: Date.now() };
   const existing = clusters[current].notes.filter((n) => n.type === 'link').length;
   if (existing >= CAT_LIMIT) {
     const overflow = findOrCreateOverflow(current, 'link');
@@ -1863,7 +1897,7 @@ function updateCaptureUI() {
   if (captureEnabled) {
     btn.classList.replace('off', 'on') || btn.classList.add('on');
     label.textContent = 'capturing';
-    btn.title = 'Auto-capture is ON — click to pause';
+    btn.title = 'Selected text is copied and saved automatically — click to pause';
   } else {
     btn.classList.replace('on', 'off') || btn.classList.add('off');
     label.textContent = 'paused';
@@ -2019,7 +2053,8 @@ document.getElementById('imgPreviewClose').addEventListener('click', () => {
     const row = e.target.closest('.row');
     if (!row || !row.dataset.noteId) return;
     e.stopPropagation();
-    toggleSelect(Number(row.dataset.noteId), e);
+    const note = Object.values(clusters).flatMap(workspace => workspace.notes).find(item => String(item.id) === row.dataset.noteId);
+    if (note) toggleSelect(note.id, e);
   }, true);
 
   document.addEventListener('click', (e) => {
@@ -2182,4 +2217,7 @@ async function init() {
   }, 30000);
 }
 
-init();
+init().catch(error => {
+  console.error('CacheTray could not initialize', error);
+  showToast(`Could not load CacheTray: ${error.message}. Do not clear extension data.`);
+});

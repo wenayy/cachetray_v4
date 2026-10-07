@@ -32,11 +32,11 @@
   const news = document.createElement('div'); news.className = 'modal-overlay';
   news.innerHTML = `<div class="modal billing-modal release-modal" role="dialog" aria-modal="true" aria-labelledby="newsTitle">
     <div class="release-version">WHAT’S NEW · ${version}</div>
-    <div class="modal-title" id="newsTitle">Your clipboard. Now on your phone.</div>
+    <div class="modal-title" id="newsTitle">Select it. Save it.</div>
     <div class="release-features">
       <div class="release-feature"><span class="release-icon" aria-hidden="true">▧</span><div><strong>See it. Share it.</strong><p>Send an image, preview it, then share or download on your phone.</p></div></div>
       <div class="release-feature"><span class="release-icon" aria-hidden="true">⇄</span><div><strong>Pick up where you left off</strong><p>Your text, links, code &amp; tasks sync into easy-to-find categories.</p></div></div>
-      <div class="release-feature"><span class="release-icon" aria-hidden="true">⌁</span><div><strong>Pair once. Keep going.</strong><p>Scan a QR to connect. See which images you’ve already sent.</p></div></div>
+      <div class="release-feature"><span class="release-icon" aria-hidden="true">⌁</span><div><strong>Select, then paste</strong><p>Highlight webpage text to copy it and save it. Available for everyone. Pause capture anytime.</p></div></div>
     </div>
     <div class="release-pro"><strong>More room with Pro <span>$4.99/month</span></strong><div class="release-stats"><span><b>50</b>images / phone</span><span><b>100</b>clips / category</span><span><b>2</b>paired phones</span></div></div>
     <details class="release-details"><summary>Free limits &amp; phone app</summary><p>Free: 5 image sends per rolling 24 hours, 20 clips per category &amp; 1 phone. Deleting images doesn’t reset sends.</p><p>Phone content expires after 24 hours on both plans. Your local extension clips are separate.</p><p>Install the phone app at <a href="https://cachetray.gitflex.lol/received.html#install" target="_blank" rel="noopener noreferrer">cachetray.gitflex.lol ↗</a>. Pro price is USD, plus applicable taxes.</p></details>

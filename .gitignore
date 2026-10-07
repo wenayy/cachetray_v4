@@ -1,0 +1,35 @@
+# macOS / Windows metadata
+.DS_Store
+Thumbs.db
+
+# Dependencies and local deployment state
+node_modules/
+.wrangler/
+.vercel/
+.netlify/
+.expo/
+.claude/
+.codex/
+
+# Private local configuration (keep sanitized examples shareable)
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+*.pem
+*.key
+
+# Test outputs and logs
+coverage/
+playwright-report/
+test-results/
+*.log
+
+# Generated store uploads stay local; source and README demo media are tracked
+/CacheTray-*.zip
+
+# Superseded promotional drafts; the README uses the final demo thumbnail
+/CacheTray-YouTube-Thumbnail.png
+/CacheTray-YouTube-Thumbnail-Demo-V2.png
